@@ -36,11 +36,11 @@ class LdapProxyDatabase():
     def put_server(self, server: ServerEntry):
         self.db["servers"].insert_one(server)
 
-    def get_servers(self, server: ServerEntry):
+    def get_servers(self):
         return self.db["servers"].find()
     
     def put_admin(self, admin: AdminEntry):
         self.db["admins"].insert_one(admin)
 
-    def get_admins(self, admin: AdminEntry):
+    def get_admins(self):
         return self.db["admins"].find()
