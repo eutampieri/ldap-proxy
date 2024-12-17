@@ -3,12 +3,13 @@ DB_NAME = "ldap-proxy-database"
 
 # DB entry of a ldap server
 class ServerEntry():
-    def __init__(self, ip, port, base_dn, bind_dn, bind_password):
+    def __init__(self, ip, port, base_dn, bind_dn, bind_password, tls=False):
         self.ip = ip
         self.port = port
         self.base_dn = base_dn
         self.bind_dn = bind_dn
         self.bind_password = bind_password
+        self.tls = tls
 
     def to_object(self):
         return {
@@ -17,6 +18,7 @@ class ServerEntry():
             "base_dn": self.base_dn,
             "bind_dn": self.bind_dn,
             "bind_password": self.bind_password,
+            "tls": self.tls
         }
     
 # DB entry of an admin of
