@@ -22,15 +22,17 @@ class ServerEntry():
         }
     
 # DB entry of an admin of
-class AdminEntry():
-    def __init__(self, user, password):
+class UserEntry():
+    def __init__(self, user, password, is_admin):
         self.user = user
         self.password = password # da cambiare, va salata
+        self.is_admin = is_admin
     
     def to_object(self):
         return {
             "user": self.user,
             "password": self.password,
+            "is_admin": self.is_admin,
         }
 
 # DB utility class
@@ -40,13 +42,15 @@ class LdapProxyDatabase():
         self.db = self.client[DB_NAME]
         
     def put_server(self, server: ServerEntry):
-        self.db["servers"].insert_one(server)
+        self.db["servers"].insert_one(server.to_object())
 
     def get_servers(self):
         return self.db["servers"].find()
     
-    def put_admin(self, admin: AdminEntry):
-        self.db["admins"].insert_one(admin)
+    def put_user(self, admin: UserEntry):
+        self.db["users"].insert_one(admin.to_object())
 
     def get_admins(self):
-        return self.db["admins"].find()
+        return self.db["users"].find({"is_admin": True})
+    def get_users(self):
+        return self.db["users"].find()
