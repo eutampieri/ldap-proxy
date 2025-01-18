@@ -7,6 +7,7 @@ from proxydatabase import LdapProxyDatabase, ServerEntry, UserEntry
 
 class ProxyMerger(MergedLDAPServer):
     def __init__(self, database: LdapProxyDatabase):
+        self.database = database
         configs = database.get_servers()
         c = [self._ldap_config_from_db_entry(i) for i in configs]
         self.credentials = [i[1] for i in c]
@@ -39,11 +40,7 @@ class ProxyMerger(MergedLDAPServer):
     
     # authenticate a user. Return None if not authorized
     def authenticate_user(self, dn, auth):
-        users = self.database.get_users()
-        for u in users:
-            if u["user"] == dn and u["password"] == auth:
-                return UserEntry(dn, auth, u["is_admin"])
-        return None
+        return self.database.get_authenticated_user(dn, auth)
 
 if __name__ == '__main__':
     factory = protocol.ServerFactory()

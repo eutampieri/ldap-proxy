@@ -54,3 +54,11 @@ class LdapProxyDatabase():
         return self.db["users"].find({"is_admin": True})
     def get_users(self):
         return self.db["users"].find()
+
+    # authenticate a user and return it. Return None if not authorized
+    def get_authenticated_user(self, user_dn, user_auth):
+        users = self.db.get_users()
+        for u in users:
+            if u["user"] == user_dn and u["password"] == user_auth:
+                return UserEntry(user_dn, user_auth, u["is_admin"])
+        return None
