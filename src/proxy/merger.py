@@ -1,4 +1,5 @@
 #! /usr/bin/env python3
+import ldaptor.protocols.pureldap
 from ldaptor.protocols.pureldap import LDAPBindRequest
 from twisted.internet import protocol, defer, reactor
 from ldaptor.config import LDAPConfig
@@ -20,12 +21,14 @@ class ProxyMerger(MergedLDAPServer):
         # authenticate user
         auth_user = self.authenticate_user(request.dn.decode("utf-8"), request.auth.decode("utf-8"))
         if auth_user is None:
-            raise Exception("User not authorized")
+            invalid_credentials_result_code=49
+            reply(ldaptor.protocols.pureldap.LDAPBindResponse(resultCode=invalid_credentials_result_code))
 
-        for client, creds in zip(self.clients, self.credentials):
-            ldap_bind_request = LDAPBindRequest(version=3, dn=creds[0], auth=creds[1])
-            d = client.send_multiResponse(ldap_bind_request, self._gotResponse, reply)
-            d.addErrback(defer.logError)
+        else:
+            for client, creds in zip(self.clients, self.credentials):
+                ldap_bind_request = LDAPBindRequest(version=3, dn=creds[0], auth=creds[1])
+                d = client.send_multiResponse(ldap_bind_request, self._gotResponse, reply)
+                d.addErrback(defer.logError)
         return defer.succeed(request)
 
     # def add_server(self, server: ServerEntry):
