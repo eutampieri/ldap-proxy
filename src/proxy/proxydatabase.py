@@ -45,20 +45,21 @@ class LdapProxyDatabase():
         self.db["servers"].insert_one(server.to_object())
 
     def get_servers(self):
-        return self.db["servers"].find()
+        return [ServerEntry(ip=i["ip"], base_dn=i["base_dn"], bind_dn=i["bind_dn"], bind_password=i["bind_password"],
+                               port=i["port"], tls=i["tls"]) for i in self.db["servers"].find()]
     
     def put_user(self, admin: UserEntry):
         self.db["users"].insert_one(admin.to_object())
 
-    def get_admins(self):
+    def get_admins(self) -> [UserEntry]:
         return self.db["users"].find({"is_admin": True})
     def get_users(self):
-        return self.db["users"].find()
+        return [UserEntry(i["user"], i["password"], i["is_admin"]) for i in self.db["users"].find()]
 
     # authenticate a user and return it. Return None if not authorized
-    def get_authenticated_user(self, user_dn, user_auth):
-        users = self.db.get_users()
+    def get_authenticated_user(self, user_dn, user_auth) -> UserEntry | None:
+        users = self.get_users()
         for u in users:
-            if u["user"] == user_dn and u["password"] == user_auth:
-                return UserEntry(user_dn, user_auth, u["is_admin"])
+            if u.user == user_dn and u.password == user_auth:
+                return u
         return None
