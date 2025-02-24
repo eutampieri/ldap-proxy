@@ -13,10 +13,21 @@ def search(reactor, endpointStr, base_dn):
     def _doSearch(proto):
         searchFilter = ldapfilter.parseFilter('(gn=j*)')
         baseEntry = ldapsyntax.LDAPEntry(client=proto, dn=base_dn)
-        d = baseEntry.search(filterObject=searchFilter)
-        return d
+        x = baseEntry.search(filterObject=searchFilter)
+        return x
 
     d.addCallback(_doSearch)
+    return d
+
+def bind(reactor, endpointStr, base_dn, password):
+    d = connectToLDAPEndpoint(reactor, endpointStr, LDAPClient)
+
+    def _doBind(proto):
+        baseEntry = ldapsyntax.LDAPEntry(client=proto, dn=base_dn)
+        x = baseEntry.bind(password=password)
+        return x
+    
+    d.addCallback(_doBind)
     return d
 
 def main(reactor):
@@ -24,7 +35,8 @@ def main(reactor):
     from twisted.python import log
     log.startLogging(sys.stderr, setStdout=0)
     dn =  DistinguishedName('dc=example,dc=org')
-    d = search(reactor, "tcp:localhost:10389", dn)
+    # d = search(reactor, "tcp:localhost:3890", dn)
+    d = bind(reactor, "tcp:localhost:3890", dn, 'password')
 
     def _show(results):
         for item in results:
