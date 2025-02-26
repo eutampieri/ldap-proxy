@@ -1,4 +1,5 @@
 from twisted.internet import reactor, defer
+from twisted.internet.defer import Deferred
 from twisted.internet.protocol import Factory
 from twisted.internet.endpoints import clientFromString
 from ldaptor.protocols import pureldap
@@ -12,7 +13,7 @@ from ldaptor.protocols.ldap.distinguishedname import DistinguishedName
 
 class MockLDAPClient():
     """A base mock for a LDAP client."""
-    def run(self, endpoint):
+    def run(self, endpoint) -> Deferred:
         """Executes the query of this client."""
         pass
 
@@ -33,9 +34,8 @@ class BindingClient(MockLDAPClient):
         d.addCallback(_doBind)
         return d
 
-    def run(self, endpoint):
+    def run(self, endpoint) -> Deferred:
         d = self.bind(endpoint, self.dn, self.password)
-        d.addCallback(lambda _: print("Successful binding!"))
         d.addErrback(defer.logError)
         return d
 
@@ -59,28 +59,64 @@ class RejectBind(MockLDAPServer):
 class TestUtils:
     """Utility module for testing multip[le servers and clients together."""
 
-    def addServer(self, port: int, protocol: type[MockLDAPServer]):
+    def __init__(self):
+        self.actions = Deferred()
+        self._clients = []
+
+    def addServer(self, port: int, server: type[MockLDAPServer]) -> None:
         """Adds a server to the reactor."""
-        factory = Factory()
-        factory.protocol = protocol
-        reactor.listenTCP(port, factory)
-        print(f"[{protocol.__name__}] Running on port {port}...")
+        def _createServer(res):
+            factory = Factory()
+            factory.protocol = server
+            reactor.listenTCP(port, factory)
+            print(f"[{server.__name__}] Running on port {port}...")
 
-    def addClient(self, port: int, client: MockLDAPClient):
-        """Adds a client to the reactor"""
-        d = client.run(f"tcp:localhost:{port}")
-        print(f"[{client.__class__.__name__}] Client requesting to port {port}")
-        return d
+        return self.actions.addCallback(_createServer)
 
-    def run(self):
+    def addClient(self, port: int, client: MockLDAPClient) -> Deferred:
+        """Adds a client to the reactor. Returns the Deferred of the client"""
+        def _createClient(res, client_index):
+            d = client.run(f"tcp:localhost:{port}")
+            d.addCallback(lambda _: print(f"[{client.__class__.__name__}] Client requesting to port {port}"))
+            d.chainDeferred(self._clients[client_index])
+            return d
+
+        # empty deferred, for accumulating callbacks
+        self._clients.append(Deferred())
+        index = len(self._clients) - 1
+
+        self.actions.addCallback(_createClient, index)
+        return self._clients[index]
+
+    def addTimeout(self, seconds: float) -> None:
+        """Adds a timeout (in seconds) for execution"""
+        self.actions.addTimeout(seconds)
+        self.actions.addCallback(lambda _: print(f"(Timeout set to {seconds} sec)"))
+
+    def then(self, callback) -> None:
+        """Executes a callback after all the previous ones are completed"""
+        self.actions.addCallback(callback)
+    
+    def catch(self, errback) -> None:
+        """Catches an error, and executes the errback function"""
+        self.actions.addErrback(errback)
+
+    def run(self) -> None:
+        """Starts the test"""
+        reactor.callLater(1, self.actions.callback, None)
         reactor.run()
 
-    def stop(self, ignored=None):
+    def stop(self, ignored=None) -> None:
+        """Stops the test"""
         reactor.stop()
 
 if __name__ == "__main__":
+    # Testing the testing framework
     test = TestUtils()
-    test.addServer(3890, AcceptBind)
-    test.addServer(3891, RejectBind)
-    test.addClient(3890, BindingClient('cn=admin,dc=example,dc=org', 'password')).addBoth(test.stop)
+    test.addServer(port=3890, server=AcceptBind)
+    test.addServer(port=3891, server=RejectBind)
+    c = test.addClient(port=3890, client=BindingClient('cn=admin,dc=example,dc=org', 'password'))
+    c.addCallback(lambda _: print("Binded successfully!"))
+    c.addErrback(lambda _: print("Error while binding!"))
+    c.addBoth(test.stop)
     test.run()
