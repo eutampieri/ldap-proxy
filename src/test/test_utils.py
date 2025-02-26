@@ -3,13 +3,17 @@ from twisted.internet.defer import Deferred
 from twisted.internet.protocol import Factory
 from mocks import MockLDAPClient, MockLDAPServer
     
+class TestFailure(RuntimeError):
+    def __init__(self, message: str=''):
+        RuntimeError.__init__(self, f"::FAILURE::{message}")
+
 class TestEnvironment:
     """Utility module for testing multip[le servers and clients together."""
 
     def __init__(self):
         self.actions = Deferred()
         self._clients = []
-        self._failure = None
+        self.succeeded = True
 
     def addServer(self, port: int, server: type[MockLDAPServer]) -> None:
         """Adds a server to the reactor."""
@@ -38,7 +42,7 @@ class TestEnvironment:
 
     def addTimeout(self, seconds: float) -> None:
         """Adds a timeout (in seconds) for execution"""
-        self.actions.addTimeout(seconds, reactor, lambda err, f: self.fail(err))
+        self.actions.addTimeout(seconds, reactor, lambda err, f: self.fail('Timeout elapsed.'))
 
     def then(self, callback) -> None:
         """Executes a callback after all the previous ones are completed"""
@@ -48,20 +52,21 @@ class TestEnvironment:
         """Catches an error, and executes the errback function"""
         self.actions.addErrback(errback)
 
-    def run(self) -> None:
-        """Starts the test"""
+    def run(self) -> bool:
+        """Starts the test. Returns true if ran successfully, false if it failed."""
         self.catch(self.fail)
         reactor.callLater(0, self.actions.callback, None)
         reactor.run()
-        if self._failure != None:
-            raise self._failure
+        return self.succeeded
 
     def stop(self, ignored=None) -> None:
         """Stops the test"""
         reactor.stop()
 
-    def fail(self, error=RuntimeError('Error during test')) -> None:
-        self._failure = error
+    def fail(self, error: str='') -> None:
+        """Fails the test"""
+        self.succeeded = False
+        print(TestFailure(error))
 
 if __name__ == "__main__":
     ### Testing the testing environment ###
@@ -86,5 +91,5 @@ if __name__ == "__main__":
     test.addTimeout(seconds=5)
 
     # execute the test
-    test.run()
-    print(test._failure)
+    # in this case, the test should fail
+    assert not test.run()
