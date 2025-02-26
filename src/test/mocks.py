@@ -21,7 +21,7 @@ class BindingClient(MockLDAPClient):
         self.dn = dn
         self.password = password
 
-    def bind(self, endpoint, dn, password):
+    def bind(self, endpoint, dn: str, password: str) -> Deferred:
         d = connectToLDAPEndpoint(reactor, endpoint, LDAPClient)
 
         def _doBind(proto):
@@ -34,6 +34,30 @@ class BindingClient(MockLDAPClient):
 
     def run(self, endpoint) -> Deferred:
         d = self.bind(endpoint, self.dn, self.password)
+        d.addErrback(defer.logError)
+        return d
+
+class SearchingClient(MockLDAPClient):
+    """A mock LDAP client that makes a search request."""
+    def __init__(self, base_dn: str, filter: str):
+        self.base_dn = base_dn
+        self.filter = filter
+
+    def search(self, endpoint, base_dn: str, filter: str) -> Deferred:
+        d = connectToLDAPEndpoint(reactor, endpoint, LDAPClient)
+
+        def _doSearch(proto):
+            from ldaptor import ldapfilter
+            searchFilter = ldapfilter.parseFilter(filter)
+            baseEntry = ldapsyntax.LDAPEntry(client=proto, dn=DistinguishedName(base_dn))
+            x = baseEntry.search(filterObject=searchFilter)
+            return x
+        
+        d.addCallback(_doSearch)
+        return d
+
+    def run(self, endpoint) -> Deferred:
+        d = self.search(endpoint, self.base_dn, self.filter)
         d.addErrback(defer.logError)
         return d
 
