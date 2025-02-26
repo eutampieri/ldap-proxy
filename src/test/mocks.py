@@ -78,3 +78,9 @@ class RejectBind(MockLDAPServer):
     def handle_LDAPBindRequest(self, request, controls, reply):
         # Reject bind request (invalid credentials)
         return reply(pureldap.LDAPBindResponse(resultCode=49))
+    
+class UnresponsiveBind(MockLDAPServer):
+    """A mock LDAP server that never replies to binf requests."""
+    def handle_LDAPBindRequest(self, request, controls, reply):
+        # Dont reply to bind request
+        pass

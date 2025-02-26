@@ -3,12 +3,13 @@ from twisted.internet.defer import Deferred
 from twisted.internet.protocol import Factory
 from mocks import MockLDAPClient, MockLDAPServer
     
-class TestUtils:
+class TestEnvironment:
     """Utility module for testing multip[le servers and clients together."""
 
     def __init__(self):
         self.actions = Deferred()
         self._clients = []
+        self._failure = None
 
     def addServer(self, port: int, server: type[MockLDAPServer]) -> None:
         """Adds a server to the reactor."""
@@ -37,8 +38,7 @@ class TestUtils:
 
     def addTimeout(self, seconds: float) -> None:
         """Adds a timeout (in seconds) for execution"""
-        self.actions.addTimeout(seconds)
-        self.actions.addCallback(lambda _: print(f"(Timeout set to {seconds} sec)"))
+        self.actions.addTimeout(seconds, reactor, lambda err, f: self.fail(err))
 
     def then(self, callback) -> None:
         """Executes a callback after all the previous ones are completed"""
@@ -50,22 +50,41 @@ class TestUtils:
 
     def run(self) -> None:
         """Starts the test"""
-        reactor.callLater(1, self.actions.callback, None)
+        self.catch(self.fail)
+        reactor.callLater(0, self.actions.callback, None)
         reactor.run()
+        if self._failure != None:
+            raise self._failure
 
     def stop(self, ignored=None) -> None:
         """Stops the test"""
         reactor.stop()
 
-if __name__ == "__main__":
-    # Testing the testing framework
-    from mocks import AcceptBind, RejectBind, BindingClient
+    def fail(self, error=RuntimeError('Error during test')) -> None:
+        self._failure = error
 
-    test = TestUtils()
+if __name__ == "__main__":
+    ### Testing the testing environment ###
+    from mocks import AcceptBind, RejectBind, UnresponsiveBind, BindingClient
+
+    # create the test environment
+    test = TestEnvironment()
+
+    # add some servers to the test
     test.addServer(port=3890, server=AcceptBind)
     test.addServer(port=3891, server=RejectBind)
-    c = test.addClient(port=3890, client=BindingClient('cn=admin,dc=example,dc=org', 'password'))
-    c.addCallback(lambda _: print("Binded successfully!"))
-    c.addErrback(lambda _: print("Error while binding!"))
-    c.addBoth(test.stop)
+    test.addServer(port=3892, server=UnresponsiveBind)
+
+    # add a client, and define some callbacks over it
+    clientDeferred = test.addClient(port=3892, client=BindingClient('cn=admin,dc=example,dc=org', 'password'))
+
+    clientDeferred.addCallback(lambda _: print("Binded successfully!"))
+    clientDeferred.addErrback(lambda _: print("Error while binding!"))
+    clientDeferred.addBoth(test.stop)
+    
+    # set a timeout for the execution
+    test.addTimeout(seconds=5)
+
+    # execute the test
     test.run()
+    print(test._failure)
