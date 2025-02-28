@@ -42,17 +42,12 @@ class LdapProxy(ProxyBase):
             LDAPClient)
     
     def handleBeforeForwardRequest(self, request, controls, reply):
-        # TODO
-        # log.msg("Request => " + repr(request))
-        # if ratelimiter.check(request):
-        #     return defer.succeed((request, controls))
-        # else:
-        #     log.msg("> RATE LIMIT EXCEEDED")
-        #     msg = pureldap.LDAPResult(resultCode=LDAPTimeLimitExceeded.resultCode, errorMessage="Rate Limit Exceeded")
-        #     reply(msg)
-        #     return defer.succeed(None)
-        return defer.succeed((request, controls))
- 
+        print(request)
+        # TODO Find LDAP server, then forward and get response back
+        response = ...
+        reply(response)
+        return defer.succeed(None)
+
     def handleProxiedResponse(self, response, request, controls):
         log.msg("Request => " + repr(request))
         log.msg("Response => " + repr(response))
