@@ -8,7 +8,7 @@ class TestFailure(RuntimeError):
         RuntimeError.__init__(self, f"::FAILURE::{message}")
 
 class TestEnvironment:
-    """Utility module for testing multip[le servers and clients together."""
+    """Utility module for testing multiple servers and clients together."""
 
     def __init__(self):
         self.actions = Deferred()
@@ -17,26 +17,32 @@ class TestEnvironment:
 
     def addServer(self, port: int, server: type[MockLDAPServer]) -> None:
         """Adds a server to the reactor."""
+        serverName = server.__name__
+
         def _createServer(res):
             factory = Factory()
             factory.protocol = server
             reactor.listenTCP(port, factory)
-            print(f"[{server.__name__}] Running on port {port}...")
+            print(f"[{serverName}] Running on port {port}...")
 
+        self.actions.addCallback(lambda _: print(f"[{serverName}] Starting..."))
         return self.actions.addCallback(_createServer)
 
     def addClient(self, port: int, client: MockLDAPClient) -> Deferred:
         """Adds a client to the reactor. Returns the Deferred of the client"""
-        def _createClient(res, client_index):
+        clientName = client.__class__.__name__
+
+        def _createClient(res, clientIndex):
             d = client.run(f"tcp:localhost:{port}")
-            d.addCallback(lambda _: print(f"[{client.__class__.__name__}] Client requesting to port {port}"))
-            d.chainDeferred(self._clients[client_index])
+            d.addCallback(lambda _: print(f"[{clientName}] Client requesting to port {port}"))
+            d.chainDeferred(self._clients[clientIndex])
             return d
 
         # empty deferred, for accumulating callbacks
         self._clients.append(Deferred())
         index = len(self._clients) - 1
 
+        self.actions.addCallback(lambda _: print(f"[{clientName}] Starting..."))
         self.actions.addCallback(_createClient, index)
         return self._clients[index]
 
