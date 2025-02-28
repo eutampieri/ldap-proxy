@@ -1,10 +1,9 @@
-#! /usr/bin/env python3
 import ldaptor.protocols.pureldap
 from ldaptor.protocols.pureldap import LDAPBindRequest
 from twisted.internet import protocol, defer, reactor
 from ldaptor.config import LDAPConfig
 from ldaptor.protocols.ldap.merger import MergedLDAPServer
-from proxydatabase import LdapProxyDatabase, ServerEntry, UserEntry
+from proxy.proxydatabase import LdapProxyDatabase, ServerEntry, UserEntry
 
 class ProxyMerger(MergedLDAPServer):
     def __init__(self, database: LdapProxyDatabase):
@@ -45,19 +44,3 @@ class ProxyMerger(MergedLDAPServer):
     # authenticate a user. Return None if not authorized
     def authenticate_user(self, dn, auth):
         return self.database.get_authenticated_user(dn, auth)
-
-if __name__ == '__main__':
-    factory = protocol.ServerFactory()
-
-    def buildProtocol():
-        db = LdapProxyDatabase("127.0.0.1", 27017)
-        # configs = [
-        #     ServerEntry(ip="192.168.1.2", port=389, bind_dn="", bind_password="dc", base_dn=""),
-        #     ServerEntry(ip="192.168.1.189", port=389, bind_dn="", bind_password="dc-temp", base_dn="")
-        # ]
-        return ProxyMerger(db)
-
-    factory.protocol = buildProtocol
-    reactor.listenTCP(3389, factory)
-    print("Starting")
-    reactor.run()
