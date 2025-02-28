@@ -4,7 +4,8 @@ from ldaptor.protocols.ldap.ldaperrors import LDAPTimeLimitExceeded
 from ldaptor.protocols.ldap.ldapclient import LDAPClient
 from ldaptor.protocols.ldap.ldapconnector import connectToLDAPEndpoint
 from ldaptor.protocols.ldap.proxybase import ProxyBase
-from twisted.internet import defer, protocol, reactor
+from twisted.internet import defer, reactor
+from twisted.internet.protocol import Factory
 from twisted.python import log
 from functools import partial
 import sys
@@ -78,11 +79,11 @@ if __name__ == '__main__':
         PROXY_PORT = int(sys.argv[1])
     # start logging service
     log.startLogging(sys.stderr)
-    factory = protocol.ServerFactory()
- 
-    def buildProtocol():
-        return LdapProxy()
- 
-    factory.protocol = buildProtocol
+
+    factory = Factory()
+    factory.protocol = LdapProxy
     reactor.listenTCP(PROXY_PORT, factory)
+    print(f"[{factory.protocol.__name__}] Running on port {PROXY_PORT}...")
+
+    # start the server
     reactor.run()
