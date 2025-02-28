@@ -56,8 +56,11 @@ class TestEnvironment:
         """Starts the test. Returns true if ran successfully, false if it failed."""
         self.catch(self.fail)
         reactor.callLater(0, self.actions.callback, None)
-        reactor.run()
-        return self.succeeded
+        try:
+            reactor.run()
+            return self.succeeded
+        except Exception:
+            return False
 
     def stop(self, ignored=None) -> None:
         """Stops the test"""
