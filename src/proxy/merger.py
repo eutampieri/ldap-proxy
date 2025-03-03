@@ -18,8 +18,8 @@ class ProxyMerger(MergedLDAPServer):
 
     def _handle_LDAPBindRequest(self, request: LDAPBindRequest, controls, reply):
         # authenticate user
-        auth_user = self.authenticate_user(request.dn.decode("utf-8"), request.auth.decode("utf-8"))
-        if auth_user is None:
+        auth_client = self.authenticate_client(request.dn.decode("utf-8"), request.auth.decode("utf-8"))
+        if auth_client is None:
             invalid_credentials_result_code=49
             reply(ldaptor.protocols.pureldap.LDAPBindResponse(resultCode=invalid_credentials_result_code))
 
@@ -42,5 +42,5 @@ class ProxyMerger(MergedLDAPServer):
         )
 
     # authenticate a user. Return None if not authorized
-    def authenticate_user(self, dn, auth):
+    def authenticate_client(self, dn, auth):
         return self.database.get_authenticated_client(dn, auth)
