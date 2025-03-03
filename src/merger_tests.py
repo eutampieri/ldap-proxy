@@ -35,7 +35,6 @@ class TestProxyMerger(unittest.TestCase):
         test.addTimeout(2)
         self.assertTrue(test.run())
 
-        pass
     # def test_unregistered_client_should_not_bind(self):
     #     pass
     # def test_bind_should_fail_when_one_server_is_unavailable(self):
@@ -50,6 +49,4 @@ class TestProxyMerger(unittest.TestCase):
     #     pass
 
 if __name__ == '__main__':
-    print('ciao')
     unittest.main()
-    print('done')
