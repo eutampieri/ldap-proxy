@@ -6,6 +6,7 @@ from ldaptor.protocols.ldap import ldapsyntax
 from ldaptor.protocols.ldap.ldapconnector import connectToLDAPEndpoint
 from ldaptor.protocols.ldap.ldapclient import LDAPClient
 from ldaptor.protocols.ldap.distinguishedname import DistinguishedName
+from proxy.proxydatabase import ClientEntry, ServerEntry
 
 ### LDAP Client ###
 
@@ -84,3 +85,25 @@ class UnresponsiveBind(MockLDAPServer):
     def handle_LDAPBindRequest(self, request, controls, reply):
         # Dont reply to bind request
         pass
+
+### Database ###
+
+class MockProxyDatabase():
+    """A base mock for a database. Needs to be extended with the wanted capabilities. Can be created with a set of servers."""
+    def __init__(self, servers: list[ServerEntry]=[]):
+        self.servers = servers
+
+    def get_servers(self):
+        return self.servers
+
+class OneClientDatabase(MockProxyDatabase):
+    """A mock database that contains only one client."""
+    def __init__(self, client: ClientEntry, servers: list[ServerEntry]=[]):
+        self.client = client
+        super().__init__(servers)
+
+    def get_clients(self) -> list[ClientEntry]:
+        return [self.client]
+    
+    def get_authenticated_client(self, client_dn, client_auth) -> ClientEntry | None:
+        return self.client if client_dn == self.client.dn and client_auth == self.client.password else None

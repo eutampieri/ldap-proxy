@@ -48,7 +48,7 @@ class ClientEntry():
         }
 
 # DB utility class
-class LdapProxyDatabase():
+class ProxyDatabase():
     def __init__(self, address, port):
         self.client = MongoClient(address, port)
         self.db = self.client[DB_NAME]
@@ -75,10 +75,10 @@ class LdapProxyDatabase():
     def get_clients(self) -> list[ClientEntry]:
         return [ClientEntry(i["dn"], i["password"]) for i in self.db["clients"].find()]
 
-    # authenticate a user and return it. Return None if not authorized
-    def get_authenticated_user(self, user_dn, user_auth) -> UserEntry | None:
-        users = self.get_users()
-        for u in users:
-            if u.user == user_dn and u.password == user_auth:
+    # authenticate a client and return it. Return None if not authorized
+    def get_authenticated_client(self, client_dn, client_auth) -> ClientEntry | None:
+        clients = self.get_clients()
+        for u in clients:
+            if u.dn == client_dn and u.password == client_auth:
                 return u
         return None

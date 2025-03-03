@@ -1,7 +1,7 @@
 from twisted.internet import reactor
 from twisted.internet.defer import Deferred
 from twisted.internet.protocol import Factory
-from mocks import MockLDAPClient, MockLDAPServer
+from test.mocks import MockLDAPClient, MockLDAPServer
     
 class TestFailure(RuntimeError):
     def __init__(self, message: str=''):
@@ -76,10 +76,11 @@ class TestEnvironment:
         """Fails the test"""
         self.succeeded = False
         print(TestFailure(error))
+        self.stop()
 
 if __name__ == "__main__":
     ### Testing the testing environment ###
-    from mocks import AcceptBind, RejectBind, UnresponsiveBind, BindingClient
+    from test.mocks import AcceptBind, RejectBind, UnresponsiveBind, BindingClient
 
     # create the test environment
     test = TestEnvironment()

@@ -3,10 +3,10 @@ from ldaptor.protocols.pureldap import LDAPBindRequest
 from twisted.internet import protocol, defer, reactor
 from ldaptor.config import LDAPConfig
 from ldaptor.protocols.ldap.merger import MergedLDAPServer
-from proxy.proxydatabase import LdapProxyDatabase, ServerEntry, UserEntry
+from proxy.proxydatabase import ProxyDatabase, ServerEntry, UserEntry
 
 class ProxyMerger(MergedLDAPServer):
-    def __init__(self, database: LdapProxyDatabase):
+    def __init__(self, database: ProxyDatabase):
         self.database = database
         configs = database.get_servers()
         c = [self._ldap_config_from_db_entry(i) for i in configs]
@@ -43,4 +43,4 @@ class ProxyMerger(MergedLDAPServer):
 
     # authenticate a user. Return None if not authorized
     def authenticate_user(self, dn, auth):
-        return self.database.get_authenticated_user(dn, auth)
+        return self.database.get_authenticated_client(dn, auth)
