@@ -14,6 +14,7 @@ class TestEnvironment:
         self.actions = Deferred()
         self._clients = []
         self.succeeded = True
+        self.stopped = False
 
     def addServer(self, port: int, server: type[MockLDAPServer]) -> None:
         """Adds a server to the reactor."""
@@ -70,7 +71,9 @@ class TestEnvironment:
 
     def stop(self, ignored=None) -> None:
         """Stops the test"""
-        reactor.stop()
+        if not self.stopped:
+            self.stopped = True
+            reactor.stop()
 
     def fail(self, error: str='') -> None:
         """Fails the test"""

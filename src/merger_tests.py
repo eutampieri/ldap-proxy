@@ -1,4 +1,3 @@
-import unittest
 from test.mocks import *
 from test_utils import TestEnvironment
 from proxy.merger import ProxyMerger
@@ -57,8 +56,27 @@ class TestProxyMerger(unittest.TestCase):
         test.addTimeout(2)
         self.assertFalse(test.run())
 
-    # def test_bind_should_fail_when_one_server_is_unavailable(self):
-    #     pass
+    def test_bind_should_fail_when_one_server_is_unavailable(self):
+        # configs
+        client = ClientEntry('cn=client,dc=example,dc=org', 'clientpassword')
+        servers = [
+            ServerEntry('127.0.0.1', 3892, 'dc=example,dc=org', 'cn=proxy,dc=example,dc=org', 'proxypassword'),
+            ServerEntry('127.0.0.1', 3893, 'dc=example,dc=org', 'cn=proxy,dc=example,dc=org', 'proxypassword')
+        ]
+        # create servers
+        tost = TestEnvironment()
+        tost.addServer(port=3892, server=AcceptBind)
+        tost.addServer(port=3893, server=UnresponsiveBind)
+        # create proxy
+        proxy = lambda: ProxyMerger(OneClientDatabase(client, servers))
+        tost.addServer(port=10389, server=proxy)
+        # create client
+        d = tost.addClient(port=10389, client=BindingClient(client.dn, client.password))
+        d.addBoth(tost.stop)
+
+        tost.addTimeout(2)
+        self.assertFalse(tost.run())
+
     # def test_search_should_be_executed_on_all_servers(self):
     #     pass
     # def test_search_should_fail_when_one_server_is_unavailable(self):
@@ -69,4 +87,3 @@ class TestProxyMerger(unittest.TestCase):
     #     pass
 
 if __name__ == '__main__':
-    unittest.main()
