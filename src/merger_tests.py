@@ -35,8 +35,28 @@ class TestProxyMerger(unittest.TestCase):
         test.addTimeout(2)
         self.assertTrue(test.run())
 
-    # def test_unregistered_client_should_not_bind(self):
-    #     pass
+    def test_unregistered_client_should_not_bind(self):
+        # configs
+        client = ClientEntry('cn=client,dc=example,dc=org', 'clientpassword')
+        servers = [
+            ServerEntry('127.0.0.1', 3890, 'dc=example,dc=org', 'cn=proxy,dc=example,dc=org', 'proxypassword'),
+            ServerEntry('127.0.0.1', 3891, 'dc=example,dc=org', 'cn=proxy,dc=example,dc=org', 'proxypassword')
+        ]
+        # create servers
+        test = TestEnvironment()
+        for s in servers:
+            test.addServer(port=s.port, server=AcceptBind)
+        # create proxy
+        proxy = lambda: ProxyMerger(OneClientDatabase(client, servers))
+        test.addServer(port=10389, server=proxy)
+        # create client
+        d = test.addClient(port=10389, client=BindingClient('wrong', 'credentials'))
+        d.addCallbacks(lambda _: print('Binded correctly!'), lambda _: print('Error while binding!'))
+        d.addBoth(test.stop)
+
+        test.addTimeout(2)
+        self.assertFalse(test.run())
+
     # def test_bind_should_fail_when_one_server_is_unavailable(self):
     #     pass
     # def test_search_should_be_executed_on_all_servers(self):
