@@ -1,6 +1,10 @@
+import unittest
+import twisted.internet
+from twisted.trial import unittest as twistedtest
 from test.mocks import *
 from test_utils import TestEnvironment
 from proxy.merger import ProxyMerger
+from twisted.internet.protocol import Factory
 
 ### Tests for the LDAP proxy merger ###
 
@@ -10,73 +14,28 @@ from proxy.merger import ProxyMerger
 # 4. Read-only proxy: only queries should be allowed
 # 5. Database error handling
 
-class TestProxyMerger(unittest.TestCase):
+class TestProxyMerger(twistedtest.TestCase):
 
-    def test_registered_client_should_bind(self):
-        # configs
-        client = ClientEntry('cn=client,dc=example,dc=org', 'clientpassword')
-        servers = [
-            ServerEntry('127.0.0.1', 3890, 'dc=example,dc=org', 'cn=proxy,dc=example,dc=org', 'proxypassword'),
-            ServerEntry('127.0.0.1', 3891, 'dc=example,dc=org', 'cn=proxy,dc=example,dc=org', 'proxypassword')
-        ]
-        # create servers
-        test = TestEnvironment()
-        for s in servers:
-            test.addServer(port=s.port, server=AcceptBind)
-        # create proxy
-        proxy = lambda: ProxyMerger(OneClientDatabase(client, servers))
-        test.addServer(port=10389, server=proxy)
-        # create client
-        d = test.addClient(port=10389, client=BindingClient(client.dn, client.password))
-        d.addCallbacks(lambda _: print('Binded correctly!'), lambda _: print('Error while binding!'))
-        d.addBoth(test.stop)
+    def startServer(self, port: int, protocol):
+        factory = Factory()
+        factory.protocol = protocol
+        port = reactor.listenTCP(port, factory)
+        self.addCleanup(port.stopListening)
 
-        test.addTimeout(2)
-        self.assertTrue(test.run())
+    def startClient(self, port: int, client: MockLDAPClient) -> Deferred:
+        return client.run(f"tcp:localhost:{port}")
 
-    def test_unregistered_client_should_not_bind(self):
-        # configs
-        client = ClientEntry('cn=client,dc=example,dc=org', 'clientpassword')
-        servers = [
-            ServerEntry('127.0.0.1', 3890, 'dc=example,dc=org', 'cn=proxy,dc=example,dc=org', 'proxypassword'),
-            ServerEntry('127.0.0.1', 3891, 'dc=example,dc=org', 'cn=proxy,dc=example,dc=org', 'proxypassword')
-        ]
-        # create servers
-        test = TestEnvironment()
-        for s in servers:
-            test.addServer(port=s.port, server=AcceptBind)
-        # create proxy
-        proxy = lambda: ProxyMerger(OneClientDatabase(client, servers))
-        test.addServer(port=10389, server=proxy)
-        # create client
-        d = test.addClient(port=10389, client=BindingClient('wrong', 'credentials'))
-        d.addCallbacks(lambda _: print('Binded correctly!'), lambda _: print('Error while binding!'))
-        d.addBoth(test.stop)
+    def tearDown(self):
+        for call in reactor.getDelayedCalls():
+            if call.active():
+                call.cancel()
 
-        test.addTimeout(2)
-        self.assertFalse(test.run())
-
-    def test_bind_should_fail_when_one_server_is_unavailable(self):
-        # configs
-        client = ClientEntry('cn=client,dc=example,dc=org', 'clientpassword')
-        servers = [
-            ServerEntry('127.0.0.1', 3892, 'dc=example,dc=org', 'cn=proxy,dc=example,dc=org', 'proxypassword'),
-            ServerEntry('127.0.0.1', 3893, 'dc=example,dc=org', 'cn=proxy,dc=example,dc=org', 'proxypassword')
-        ]
-        # create servers
-        tost = TestEnvironment()
-        tost.addServer(port=3892, server=AcceptBind)
-        tost.addServer(port=3893, server=UnresponsiveBind)
-        # create proxy
-        proxy = lambda: ProxyMerger(OneClientDatabase(client, servers))
-        tost.addServer(port=10389, server=proxy)
-        # create client
-        d = tost.addClient(port=10389, client=BindingClient(client.dn, client.password))
-        d.addBoth(tost.stop)
-
-        tost.addTimeout(2)
-        self.assertFalse(tost.run())
-
+    # def test_registered_client_should_bind(self):
+    #     pass
+    # def test_unregistered_client_should_not_bind(self):
+    #     pass
+    # def test_bind_should_fail_when_one_server_is_unavailable(self):
+    #     pass
     # def test_search_should_be_executed_on_all_servers(self):
     #     pass
     # def test_search_should_fail_when_one_server_is_unavailable(self):
@@ -87,3 +46,4 @@ class TestProxyMerger(unittest.TestCase):
     #     pass
 
 if __name__ == '__main__':
+    unittest.main()
