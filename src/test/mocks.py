@@ -38,14 +38,13 @@ class BindingClient(MockLDAPClient):
             baseEntry = ldapsyntax.LDAPEntry(client=proto, dn=DistinguishedName(dn))
             x = baseEntry.bind(password=password)
             return x
-        connection.addCallback(_addConn)
-        connection.addCallback(_doBind)
+        connection.addCallbacks(_addConn, print)
+        connection.addCallbacks(_doBind, print)
         return connection
 
     def run(self, host, port) -> Deferred:
         d = self.connectToEndpoint(host, port)
         self.bind(d, self.dn, self.password)
-        d.addErrback(defer.logError)
         return d
     
     def close(self) -> None:
