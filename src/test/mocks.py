@@ -1,4 +1,4 @@
-from twisted.internet import reactor, defer
+from twisted.internet import reactor, defer, error
 from twisted.internet.defer import Deferred
 from ldaptor.protocols import pureldap
 from ldaptor.protocols.ldap.ldapserver import LDAPServer
@@ -44,8 +44,7 @@ class BindingClient(MockLDAPClient):
 
     def run(self, host, port) -> Deferred:
         d = self.connectToEndpoint(host, port)
-        self.bind(d, self.dn, self.password)
-        return d
+        return self.bind(d, self.dn, self.password)
     
     def close(self) -> None:
         self.conn.loseConnection()
@@ -101,7 +100,7 @@ class UnresponsiveBind(MockLDAPServer):
     """A mock LDAP server that never replies to binf requests."""
     def handle_LDAPBindRequest(self, request, controls, reply):
         # Dont reply to bind request
-        pass
+        return None
 
 ### Database ###
 

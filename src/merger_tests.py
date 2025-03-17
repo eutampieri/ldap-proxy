@@ -1,5 +1,5 @@
 import unittest
-import twisted.internet
+import twisted.internet.error
 from twisted.trial import unittest as twistedtest
 from test.mocks import *
 from test_utils import TestEnvironment
@@ -31,6 +31,7 @@ class TestProxyMerger(twistedtest.TestCase):
         return d
 
     def tearDown(self):
+        self.flushLoggedErrors(twisted.internet.error.ConnectionDone) # ignore the connection closed error
         for call in reactor.getDelayedCalls():
             if call.active():
                 call.cancel()
@@ -90,8 +91,32 @@ class TestProxyMerger(twistedtest.TestCase):
         # wait completion
         return clientDef
 
-    # def test_bind_should_fail_when_one_server_is_unavailable(self):
-    #     pass
+    def test_bind_should_fail_when_one_server_is_unavailable(self):
+        # config
+        client = ClientEntry('cn=client,dc=example,dc=org', 'clientpassword')
+        servers = [
+            ServerEntry('127.0.0.1', 3890, 'dc=example,dc=org', 'cn=proxy,dc=example,dc=org', 'proxypassword'),
+            ServerEntry('127.0.0.1', 3891, 'dc=example,dc=org', 'cn=proxy,dc=example,dc=org', 'proxypassword')
+        ]
+
+        # start server
+        self.startServer(port=3890, server=AcceptBind)
+        self.startServer(port=3891, server=UnresponsiveBind)
+
+        # start proxy
+        proxy = lambda: ProxyMerger(OneClientDatabase(client, servers))
+        self.startServer(port=10389, server=proxy)
+
+        # start client
+        clientDef = self.startClient(port=10389, client=BindingClient(client.dn, client.password))
+        def timeoutCallback(err, val):
+            self.succeed()
+        clientDef.addBoth(self.fail) # should not reach this point
+        clientDef.addTimeout(2, reactor, onTimeoutCancel=timeoutCallback) # timeout should kick
+
+        # wait completion
+        return clientDef
+
     # def test_search_should_be_executed_on_all_servers(self):
     #     pass
     # def test_search_should_fail_when_one_server_is_unavailable(self):

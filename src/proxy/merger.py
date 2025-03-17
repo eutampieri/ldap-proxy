@@ -19,7 +19,6 @@ class ProxyMerger(MergedLDAPServer):
         auth_client = self.authenticate_client(request.dn.decode("utf-8"), request.auth.decode("utf-8"))
         if auth_client is None:
             # Invalid credentials
-            print('Invalid credentials')
             res = pureldap.LDAPBindResponse(resultCode=49)
             reply(res)
             return defer.succeed(res)
