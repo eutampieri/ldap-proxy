@@ -66,15 +66,13 @@ class SearchingClient(MockLDAPClient):
             baseEntry = ldapsyntax.LDAPEntry(client=proto, dn=DistinguishedName(base_dn))
             x = baseEntry.search(filterObject=searchFilter)
             return x
-        connection.addCallback(_addConn)
-        connection.addCallback(_doSearch)
+        connection.addCallbacks(_addConn, print)
+        connection.addCallbacks(_doSearch, print)
         return connection
 
     def run(self, host, port) -> Deferred:
         d = self.connectToEndpoint(host, port)
-        self.search(d, self.base_dn, self.filter)
-        d.addErrback(defer.logError)
-        return d
+        return self.search(d, self.base_dn, self.filter)
 
     def close(self) -> None:
         self.conn.loseConnection()
@@ -97,10 +95,24 @@ class RejectBind(MockLDAPServer):
         return reply(pureldap.LDAPBindResponse(resultCode=49))
     
 class UnresponsiveBind(MockLDAPServer):
-    """A mock LDAP server that never replies to binf requests."""
+    """A mock LDAP server that never replies to bind requests."""
     def handle_LDAPBindRequest(self, request, controls, reply):
         # Dont reply to bind request
         return None
+    
+class SimpleSearch(MockLDAPServer):
+    """A mock LDAP server that replies to search requests."""
+    def handle_LDAPSearchRequest(self, request, controls, reply):
+        dn = "cn=Bob,dc=example,dc=org"
+        attributes = [
+            ("cn", ["Bob"]),
+            ("sn", ["Bobby"]),
+            ("mail", ["bob@example.com"]),
+            ("objectClass", ["inetOrgPerson"])
+        ]
+        # Reply to search requests with a mock person
+        reply(pureldap.LDAPSearchResultEntry(objectName=dn.encode(), attributes=attributes))
+        return defer.succeed(pureldap.LDAPSearchResultDone(resultCode=0))
 
 ### Database ###
 

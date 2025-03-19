@@ -1,5 +1,4 @@
 import ldaptor.protocols.pureldap
-from ldaptor.protocols.pureldap import LDAPBindRequest
 from twisted.internet import protocol, defer, reactor
 from ldaptor.config import LDAPConfig
 from ldaptor.protocols.ldap.merger import MergedLDAPServer
@@ -19,11 +18,16 @@ class ProxyMerger(MergedLDAPServer):
         auth_client = self.authenticate_client(request.dn.decode("utf-8"), request.auth.decode("utf-8"))
         if auth_client is None:
             # Invalid credentials
-            res = pureldap.LDAPBindResponse(resultCode=49)
-            reply(res)
-            return defer.succeed(res)
+            ldap_bind_reject = pureldap.LDAPBindResponse(resultCode=49)
+            reply(ldap_bind_reject)
+            return defer.succeed(ldap_bind_reject)
         else:
-            return super().handle_LDAPBindRequest(request, controls, reply)
+            # Client registered: binding with own credentials
+            for client, creds in zip(self.clients, self.credentials):
+                ldap_bind_request = pureldap.LDAPBindRequest(version=3, dn=creds[0], auth=creds[1])
+                d = client.send_multiResponse(ldap_bind_request, self._gotResponse, reply)
+                d.addErrback(defer.logError)
+            return defer.succeed(None)
 
     # def _handle_LDAPBindRequest(self, request: LDAPBindRequest, controls, reply):
     #     # authenticate user

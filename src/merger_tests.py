@@ -117,8 +117,36 @@ class TestProxyMerger(twistedtest.TestCase):
         # wait completion
         return clientDef
 
-    # def test_search_should_be_executed_on_all_servers(self):
-    #     pass
+    def test_search_should_be_executed_on_all_servers(self):
+        # config
+        client = ClientEntry('cn=client,dc=example,dc=org', 'clientpassword')
+        servers = [
+            ServerEntry('127.0.0.1', 3890, 'dc=example,dc=org', 'cn=proxy,dc=example,dc=org', 'proxypassword'),
+            ServerEntry('127.0.0.1', 3891, 'dc=example,dc=org', 'cn=proxy,dc=example,dc=org', 'proxypassword')
+        ]
+
+        # start server
+        for s in servers:
+            self.startServer(port=s.port, server=SimpleSearch)
+
+        # start proxy
+        proxy = lambda: ProxyMerger(OneClientDatabase(client, servers))
+        self.startServer(port=10389, server=proxy)
+
+        # start client
+        clientDef = self.startClient(port=10389, client=SearchingClient('dc=example,dc=org', filter='(objectClass=*)'))
+        clientDef.addErrback(self.fail)
+
+        def check_result(result):
+            self.assertEqual(len(result), 2) # expecting two entries
+            entry = result[0]
+            self.assertEqual(list(entry.get("cn")), [b"Bob"])
+            self.assertEqual(list(entry.get("sn")), [b"Bobby"])
+            self.assertEqual(list(entry.get("mail")), [b"bob@example.com"])
+
+        # wait completion
+        return clientDef.addCallback(check_result)
+    
     # def test_search_should_fail_when_one_server_is_unavailable(self):
     #     pass
     # def test_only_read_operations_should_be_allowed(self):
