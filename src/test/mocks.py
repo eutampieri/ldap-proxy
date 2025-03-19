@@ -113,6 +113,12 @@ class SimpleSearch(MockLDAPServer):
         # Reply to search requests with a mock person
         reply(pureldap.LDAPSearchResultEntry(objectName=dn.encode(), attributes=attributes))
         return defer.succeed(pureldap.LDAPSearchResultDone(resultCode=0))
+    
+class UnresponsiveSearch(MockLDAPServer):
+    """A mock LDAP server that never replies to search requests."""
+    def handle_LDAPSearchRequest(self, request, controls, reply):
+        # Dont reply to search request
+        return None
 
 ### Database ###
 
