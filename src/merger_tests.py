@@ -147,8 +147,31 @@ class TestProxyMerger(twistedtest.TestCase):
         # wait completion
         return clientDef.addCallback(check_result)
     
-    # def test_search_should_fail_when_one_server_is_unavailable(self):
-    #     pass
+    def test_search_should_fail_when_one_server_is_unavailable(self):
+        # config
+        client = ClientEntry('cn=client,dc=example,dc=org', 'clientpassword')
+        servers = [
+            ServerEntry('127.0.0.1', 3890, 'dc=example,dc=org', 'cn=proxy,dc=example,dc=org', 'proxypassword'),
+            ServerEntry('127.0.0.1', 3891, 'dc=example,dc=org', 'cn=proxy,dc=example,dc=org', 'proxypassword')
+        ]
+
+        # start server
+        self.startServer(port=3890, server=SimpleSearch)
+        self.startServer(port=3891, server=UnresponsiveSearch)
+
+        # start proxy
+        proxy = lambda: ProxyMerger(OneClientDatabase(client, servers))
+        self.startServer(port=10389, server=proxy)
+
+        # start client
+        clientDef = self.startClient(port=10389, client=SearchingClient('dc=example,dc=org', filter='(objectClass=*)'))
+        def timeoutCallback(err, val):
+            self.succeed()
+        clientDef.addBoth(self.fail) # should not reach this point
+        clientDef.addTimeout(2, reactor, onTimeoutCancel=timeoutCallback) # timeout should kick
+
+        return clientDef
+    
     # def test_only_read_operations_should_be_allowed(self):
     #     pass
     # def test_request_should_fail_when_database_is_unavailable(self):
