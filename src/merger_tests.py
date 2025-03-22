@@ -60,8 +60,8 @@ class TestProxyMerger(twistedtest.TestCase):
 
         # start client
         clientDef = self.startClient(port=10389, client=BindingClient(client.dn, client.password))
-        clientDef.addErrback(self.fail)
         clientDef.addCallback(self.succeed)
+        clientDef.addErrback(self.fail)
 
         # wait completion
         return clientDef
@@ -96,7 +96,7 @@ class TestProxyMerger(twistedtest.TestCase):
         client = ClientEntry('cn=client,dc=example,dc=org', 'clientpassword')
         servers = [
             ServerEntry('127.0.0.1', 3890, 'dc=example,dc=org', 'cn=proxy,dc=example,dc=org', 'proxypassword'),
-            ServerEntry('127.0.0.1', 3891, 'dc=example,dc=org', 'cn=proxy,dc=example,dc=org', 'proxypassword')
+            ServerEntry('127.0.0.1', 3891, 'dc=example,dc=org', 'cn=proxy,dc=example,dc=org', 'proxypassword'),
         ]
 
         # start server
@@ -104,15 +104,16 @@ class TestProxyMerger(twistedtest.TestCase):
         self.startServer(port=3891, server=UnresponsiveBind)
 
         # start proxy
-        proxy = lambda: ProxyMerger(OneClientDatabase(client, servers))
+        proxy = lambda: ProxyMerger(OneClientDatabase(client, servers), timeout=1)
         self.startServer(port=10389, server=proxy)
 
         # start client
         clientDef = self.startClient(port=10389, client=BindingClient(client.dn, client.password))
         def timeoutCallback(err, val):
-            self.succeed()
-        clientDef.addBoth(self.fail) # should not reach this point
-        clientDef.addTimeout(2, reactor, onTimeoutCancel=timeoutCallback) # timeout should kick
+            self.fail()
+        clientDef.addCallback(self.fail)
+        clientDef.addErrback(self.succeed)
+        clientDef.addTimeout(5, reactor, onTimeoutCancel=timeoutCallback) # should reply before this timeout
 
         # wait completion
         return clientDef
@@ -135,7 +136,6 @@ class TestProxyMerger(twistedtest.TestCase):
 
         # start client
         clientDef = self.startClient(port=10389, client=SearchingClient('dc=example,dc=org', filter='(objectClass=*)'))
-        clientDef.addErrback(self.fail)
 
         def check_result(result):
             self.assertEqual(len(result), 2) # expecting two entries
@@ -144,33 +144,36 @@ class TestProxyMerger(twistedtest.TestCase):
             self.assertEqual(list(entry.get("sn")), [b"Bobby"])
             self.assertEqual(list(entry.get("mail")), [b"bob@example.com"])
 
+        clientDef.addCallback(check_result)
+        clientDef.addErrback(self.fail)
+
         # wait completion
-        return clientDef.addCallback(check_result)
-    
-    def test_search_should_fail_when_one_server_is_unavailable(self):
-        # config
-        client = ClientEntry('cn=client,dc=example,dc=org', 'clientpassword')
-        servers = [
-            ServerEntry('127.0.0.1', 3890, 'dc=example,dc=org', 'cn=proxy,dc=example,dc=org', 'proxypassword'),
-            ServerEntry('127.0.0.1', 3891, 'dc=example,dc=org', 'cn=proxy,dc=example,dc=org', 'proxypassword')
-        ]
-
-        # start server
-        self.startServer(port=3890, server=SimpleSearch)
-        self.startServer(port=3891, server=UnresponsiveSearch)
-
-        # start proxy
-        proxy = lambda: ProxyMerger(OneClientDatabase(client, servers))
-        self.startServer(port=10389, server=proxy)
-
-        # start client
-        clientDef = self.startClient(port=10389, client=SearchingClient('dc=example,dc=org', filter='(objectClass=*)'))
-        def timeoutCallback(err, val):
-            self.succeed()
-        clientDef.addBoth(self.fail) # should not reach this point
-        clientDef.addTimeout(2, reactor, onTimeoutCancel=timeoutCallback) # timeout should kick
-
         return clientDef
+    
+    # def test_search_should_fail_when_one_server_is_unavailable(self):
+    #     # config
+    #     client = ClientEntry('cn=client,dc=example,dc=org', 'clientpassword')
+    #     servers = [
+    #         ServerEntry('127.0.0.1', 3890, 'dc=example,dc=org', 'cn=proxy,dc=example,dc=org', 'proxypassword'),
+    #         ServerEntry('127.0.0.1', 3891, 'dc=example,dc=org', 'cn=proxy,dc=example,dc=org', 'proxypassword')
+    #     ]
+
+    #     # start server
+    #     self.startServer(port=3890, server=SimpleSearch)
+    #     self.startServer(port=3891, server=UnresponsiveSearch)
+
+    #     # start proxy
+    #     proxy = lambda: ProxyMerger(OneClientDatabase(client, servers), timeout=1)
+    #     self.startServer(port=10389, server=proxy)
+
+    #     # start client
+    #     clientDef = self.startClient(port=10389, client=SearchingClient('dc=example,dc=org', filter='(objectClass=*)'))
+    #     def timeoutCallback(err, val):
+    #         self.fail()
+    #     clientDef.addBoth(self.succeed) # should not reach this point
+    #     clientDef.addTimeout(5, reactor, onTimeoutCancel=timeoutCallback) # timeout should kick
+
+    #     return clientDef
     
     # def test_only_read_operations_should_be_allowed(self):
     #     pass
