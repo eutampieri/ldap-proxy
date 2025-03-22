@@ -30,6 +30,8 @@ class TimeoutLDAPClient(ldapclient.LDAPClient):
 
 class ProxyMerger(merger.MergedLDAPServer):
     def __init__(self, database: ProxyDatabase, timeout=30):
+        self.reply_counter = 0
+        self.reply_store = {}
         self.protocol = lambda: TimeoutLDAPClient(timeout=timeout)
         self.database = database
         configs = database.get_servers()
@@ -37,8 +39,52 @@ class ProxyMerger(merger.MergedLDAPServer):
         self.credentials = [i[1] for i in c]
         super().__init__([i[0] for i in c], [c.tls for c in configs])
 
+    # def _gotResponse(self, response, replies_list, deferred):
+    #     replies_list.append(response)
+
+    #     value = isinstance(
+    #         response,
+    #         (
+    #             pureldap.LDAPSearchResultDone,
+    #             pureldap.LDAPBindResponse,
+    #         ),
+    #     )
+    #     if value:
+    #         reactor.callWhenRunning(deferred.callback)
+    #     return value
+    
+    # def _clientQueue(self, request, controls, reply):
+    #     # Controls are ignored.
+    #     l = []
+    #     for c in self.clients:
+    #         if request.needs_answer:
+    #             replies = []
+    #             rd = defer.Deferred(replies)
+    #             rd.addCallback(defer.succeed)
+    #             rd.addErrback(defer.fail)
+    #             d = c.send_multiResponse(request, self._gotResponse, replies, rd)
+    #             d.addErrback(rd.errback)
+    #             l.append(rd)
+    #         else:
+    #             c.send_noResponse(request)
+        
+    #     dl = defer.DeferredList(l, fireOnOneErrback=True, consumeErrors=True)
+
+    #     def _pickWorstResponse(result: list[tuple]): #[(success, Result), ...]
+    #         res = max(result, key=lambda r: r[1].resultCode)
+    #         return res[1]
+    #     def _replyWithError(failure): # failure is a Failure(FirstFailure)
+    #         f = failure.value.subFailure
+    #         r = pureldap.LDAPBindResponse(resultCode=f.value.resultCode)
+    #         [reply(r) for c in self.clients]
+    #     def _replyWithSuccess(result):
+    #         r = _pickWorstResponse(result)
+    #         [reply(r) for c in self.clients]
+
+    #     dl.addCallback(_replyWithSuccess)
+    #     dl.addErrback(_replyWithError)
+
     def handle_LDAPBindRequest(self, request, controls, reply):
-        # return self._whenConnected(self._handle_LDAPBindRequest, request, controls, reply)
         auth_client = self.authenticate_client(request.dn.decode("utf-8"), request.auth.decode("utf-8"))
         if auth_client is None:
             # Invalid credentials
@@ -69,6 +115,22 @@ class ProxyMerger(merger.MergedLDAPServer):
             dl.addCallback(_replyWithSuccess)
             dl.addErrback(_replyWithError)
             return defer.succeed(None)
+        
+    def handle_LDAPSearchRequest(self, request, controls, reply):
+        l = []
+        for client in self.clients:
+            d = client.send_multiResponse(request, self._gotResponse, reply)
+            l.append(d)
+
+        dl = defer.DeferredList(l, fireOnOneErrback=True, consumeErrors=True)
+
+        def _replyWithError(failure): # failure is a Failure(FirstFailure)
+            f = failure.value.subFailure
+            r = pureldap.LDAPSearchResultDone(resultCode=f.value.resultCode)
+            [reply(r) for c in self.clients]
+
+        dl.addErrback(_replyWithError)
+        return defer.succeed(None)
 
     # def _handle_LDAPBindRequest(self, request: LDAPBindRequest, controls, reply):
     #     # authenticate user

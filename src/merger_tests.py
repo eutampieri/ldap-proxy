@@ -40,6 +40,9 @@ class TestProxyMerger(twistedtest.TestCase):
         """Shorthand for succeeding a test."""
         self.successResultOf(defer.succeed(True))
 
+    def fail(self, ignored=None):
+        super().fail()
+
     ### TESTS ###
 
     def test_registered_client_should_bind(self):
@@ -150,30 +153,31 @@ class TestProxyMerger(twistedtest.TestCase):
         # wait completion
         return clientDef
     
-    # def test_search_should_fail_when_one_server_is_unavailable(self):
-    #     # config
-    #     client = ClientEntry('cn=client,dc=example,dc=org', 'clientpassword')
-    #     servers = [
-    #         ServerEntry('127.0.0.1', 3890, 'dc=example,dc=org', 'cn=proxy,dc=example,dc=org', 'proxypassword'),
-    #         ServerEntry('127.0.0.1', 3891, 'dc=example,dc=org', 'cn=proxy,dc=example,dc=org', 'proxypassword')
-    #     ]
+    def test_search_should_fail_when_one_server_is_unavailable(self):
+        # config
+        client = ClientEntry('cn=client,dc=example,dc=org', 'clientpassword')
+        servers = [
+            ServerEntry('127.0.0.1', 3890, 'dc=example,dc=org', 'cn=proxy,dc=example,dc=org', 'proxypassword'),
+            ServerEntry('127.0.0.1', 3891, 'dc=example,dc=org', 'cn=proxy,dc=example,dc=org', 'proxypassword')
+        ]
 
-    #     # start server
-    #     self.startServer(port=3890, server=SimpleSearch)
-    #     self.startServer(port=3891, server=UnresponsiveSearch)
+        # start server
+        self.startServer(port=3890, server=SimpleSearch)
+        self.startServer(port=3891, server=UnresponsiveSearch)
 
-    #     # start proxy
-    #     proxy = lambda: ProxyMerger(OneClientDatabase(client, servers), timeout=1)
-    #     self.startServer(port=10389, server=proxy)
+        # start proxy
+        proxy = lambda: ProxyMerger(OneClientDatabase(client, servers), timeout=1)
+        self.startServer(port=10389, server=proxy)
 
-    #     # start client
-    #     clientDef = self.startClient(port=10389, client=SearchingClient('dc=example,dc=org', filter='(objectClass=*)'))
-    #     def timeoutCallback(err, val):
-    #         self.fail()
-    #     clientDef.addBoth(self.succeed) # should not reach this point
-    #     clientDef.addTimeout(5, reactor, onTimeoutCancel=timeoutCallback) # timeout should kick
+        # start client
+        clientDef = self.startClient(port=10389, client=SearchingClient('dc=example,dc=org', filter='(objectClass=*)'))
+        def timeoutCallback(err, val):
+            self.fail()
+        clientDef.addCallback(self.fail)
+        clientDef.addErrback(self.succeed)
+        clientDef.addTimeout(5, reactor, onTimeoutCancel=timeoutCallback) # timeout should kick
 
-    #     return clientDef
+        return clientDef
     
     # def test_only_read_operations_should_be_allowed(self):
     #     pass
