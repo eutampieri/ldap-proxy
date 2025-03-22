@@ -1,12 +1,36 @@
 import ldaptor.protocols.pureldap
 from twisted.internet import protocol, defer, reactor
 from ldaptor.config import LDAPConfig
-from ldaptor.protocols.ldap.merger import MergedLDAPServer
+from ldaptor.protocols.ldap import ldapclient, merger, ldaperrors
 from proxy.proxydatabase import ProxyDatabase, ServerEntry, UserEntry
 from ldaptor.protocols import pureldap
 
-class ProxyMerger(MergedLDAPServer):
-    def __init__(self, database: ProxyDatabase):
+class TimeoutLDAPClient(ldapclient.LDAPClient):
+    def __init__(self, timeout=30):
+        self.timeout = timeout
+        super().__init__()
+
+    def __on_timeout(self, err, time):
+        raise ldaperrors.LDAPTimeLimitExceeded(f"LDAP request timed out after {time} seconds")
+    
+    def send(self, op, controls=None):
+        d = super().send(op, controls)
+        d.addTimeout(self.timeout, reactor, self.__on_timeout)
+        return d
+    
+    def send_multiResponse(self, op, handler, *args, **kwargs):
+        d = super().send_multiResponse(op, handler, *args, **kwargs)
+        d.addTimeout(self.timeout, reactor, self.__on_timeout)
+        return d
+    
+    def send_multiResponse_ex(self, op, controls=None, handler=None, *args, **kwargs):
+        d = super().send_multiResponse_ex(self, op, controls, handler, *args, **kwargs)
+        d.addTimeout(self.timeout, reactor, self.__on_timeout)
+        return d
+
+class ProxyMerger(merger.MergedLDAPServer):
+    def __init__(self, database: ProxyDatabase, timeout=30):
+        self.protocol = lambda: TimeoutLDAPClient(timeout=timeout)
         self.database = database
         configs = database.get_servers()
         c = [self._ldap_config_from_db_entry(i) for i in configs]
@@ -23,10 +47,27 @@ class ProxyMerger(MergedLDAPServer):
             return defer.succeed(ldap_bind_reject)
         else:
             # Client registered: binding with own credentials
+            l = []
             for client, creds in zip(self.clients, self.credentials):
                 ldap_bind_request = pureldap.LDAPBindRequest(version=3, dn=creds[0], auth=creds[1])
-                d = client.send_multiResponse(ldap_bind_request, self._gotResponse, reply)
-                d.addErrback(defer.logError)
+                d = client.send(ldap_bind_request)
+                l.append(d)
+
+            dl = defer.DeferredList(l, fireOnOneErrback=True, consumeErrors=True)
+
+            def _pickWorstResponse(result: list[tuple]): #[(success, Result), ...]
+                res = max(result, key=lambda r: r[1].resultCode)
+                return res[1]
+            def _replyWithError(failure): # failure is a Failure(FirstFailure)
+                f = failure.value.subFailure
+                r = pureldap.LDAPBindResponse(resultCode=f.value.resultCode)
+                [reply(r) for c in self.clients]
+            def _replyWithSuccess(result):
+                r = _pickWorstResponse(result)
+                [reply(r) for c in self.clients]
+
+            dl.addCallback(_replyWithSuccess)
+            dl.addErrback(_replyWithError)
             return defer.succeed(None)
 
     # def _handle_LDAPBindRequest(self, request: LDAPBindRequest, controls, reply):
