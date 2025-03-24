@@ -71,12 +71,13 @@ class ProxyMerger(merger.MergedLDAPServer):
         self.reply_store = {}
         self.protocol = lambda: TimeoutLDAPClient(timeout=timeout)
         self.database = database
-        configs = database.get_servers()
-        c = [self._ldap_config_from_db_entry(i) for i in configs]
-        self.credentials = [i[1] for i in c]
-        super().__init__([i[0] for i in c], [c.tls for c in configs])
+
+        creds, configs, tsl = self._fetchConfigs()
+        self.credentials = creds
+        super().__init__(configs, tsl)
 
     def handle_LDAPBindRequest(self, request, controls, reply):
+        self.loadConfigs()
         auth_client = self.authenticate_client(request.dn.decode("utf-8"), request.auth.decode("utf-8"))
         if auth_client is None:
             # Invalid credentials
@@ -106,6 +107,7 @@ class ProxyMerger(merger.MergedLDAPServer):
         
     def handle_LDAPSearchRequest(self, request, controls, reply):
         # this override is only to have a better control over errors
+        self.loadConfigs()
         builder = DeferredRequestAggregator(reply, pureldap.LDAPSearchResultDone)
         for client in self.clients:
             d = client.send_multiResponse(request, self._gotResponse, reply)
@@ -120,6 +122,20 @@ class ProxyMerger(merger.MergedLDAPServer):
             LDAPConfig(serviceLocationOverrides={"": (config.ip, config.port)}),
             (config.bind_dn, config.bind_password)
         )
+    
+    def _fetchConfigs(self):
+        configs = self.database.get_servers()
+        c = [self._ldap_config_from_db_entry(i) for i in configs]
+        proxyCredentials = [i[1] for i in c]
+        proxyConfigs = [i[0] for i in c]
+        proxyTSL = [c.tls for c in configs]
+        return (proxyCredentials, proxyConfigs, proxyTSL)
+    
+    def loadConfigs(self):
+        creds, configs, tsl = self._fetchConfigs()
+        self.credentials = creds
+        self.configs = configs
+        self.use_tls = tsl
 
     # authenticate a user. Return None if not authorized
     def authenticate_client(self, dn, auth):
