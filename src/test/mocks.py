@@ -12,70 +12,64 @@ from proxy.proxydatabase import ClientEntry, ServerEntry
 
 class MockLDAPClient():
     """A base mock for a LDAP client."""
-    def run(self, host: str, port: int) -> Deferred:
-        """Executes the query of this client."""
-        pass
+    def __init__(self):
+        self.conn = None
 
     def close(self) -> None:
         """Close the client connection."""
-        pass
+        self.conn.loseConnection()
 
     def connectToEndpoint(self, host: str, port: int) -> Deferred[LDAPClient]:
         return connectToLDAPEndpoint(reactor, f"tcp:{host}:{port}", LDAPClient)
+
+    def run(self, host: str, port: int) -> Deferred:
+        """Executes the query of this client."""
+        d = self.connectToEndpoint(host, port)
+        def _setConnection(proto):
+            self.conn = proto.transport
+            return proto
+        d.addCallbacks(_setConnection, print)
+        return d
 
 class BindingClient(MockLDAPClient):
     """A mock LDAP client that makes a bind request."""
     def __init__(self, dn: str, password: str):
         self.dn = dn
         self.password = password
-        self.conn = None
+        super().__init__()
 
     def bind(self, connection, dn: str, password: str) -> Deferred:
-        def _addConn(proto):
-            self.conn = proto.transport
-            return proto
         def _doBind(proto):
             baseEntry = ldapsyntax.LDAPEntry(client=proto, dn=DistinguishedName(dn))
             x = baseEntry.bind(password=password)
             return x
-        connection.addCallbacks(_addConn, print)
         connection.addCallbacks(_doBind, print)
         return connection
 
     def run(self, host, port) -> Deferred:
-        d = self.connectToEndpoint(host, port)
+        d = super().run(host, port)
         return self.bind(d, self.dn, self.password)
-    
-    def close(self) -> None:
-        self.conn.loseConnection()
 
 class SearchingClient(MockLDAPClient):
     """A mock LDAP client that makes a search request."""
     def __init__(self, base_dn: str, filter: str):
         self.base_dn = base_dn
         self.filter = filter
-        self.conn = None
+        super().__init__()
 
     def search(self, connection, base_dn: str, filter: str) -> Deferred:
-        def _addConn(proto):
-            self.conn = proto.transport
-            return proto
         def _doSearch(proto):
             from ldaptor import ldapfilter
             searchFilter = ldapfilter.parseFilter(filter)
             baseEntry = ldapsyntax.LDAPEntry(client=proto, dn=DistinguishedName(base_dn))
             x = baseEntry.search(filterObject=searchFilter)
             return x
-        connection.addCallbacks(_addConn, print)
         connection.addCallbacks(_doSearch, print)
         return connection
 
     def run(self, host, port) -> Deferred:
-        d = self.connectToEndpoint(host, port)
+        d = super().run(host, port)
         return self.search(d, self.base_dn, self.filter)
-
-    def close(self) -> None:
-        self.conn.loseConnection()
 
 ### LDAP Server ###
 
