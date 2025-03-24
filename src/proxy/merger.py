@@ -67,17 +67,27 @@ class DeferredRequestAggregator():
 
 class ProxyMerger(merger.MergedLDAPServer):
     def __init__(self, database: ProxyDatabase, timeout=30):
-        self.reply_counter = 0
-        self.reply_store = {}
         self.protocol = lambda: TimeoutLDAPClient(timeout=timeout)
+        self.allowed_operations = (pureldap.LDAPBindRequest, pureldap.LDAPSearchRequest)
         self.database = database
 
         creds, configs, tsl = self._fetchConfigs()
         self.credentials = creds
         super().__init__(configs, tsl)
 
+    def handle(self, msg):
+        # override handle() so that it loads the configuration from the database
+        # before processing the request
+        h = super().handle(msg)
+        
+        if isinstance(msg.value, self.allowed_operations):
+            d = self.loadConfigs()
+            d.addCallback(lambda _: h)
+            return d
+        else:
+            return h
+
     def handle_LDAPBindRequest(self, request, controls, reply):
-        self.loadConfigs()
         auth_client = self.authenticate_client(request.dn.decode("utf-8"), request.auth.decode("utf-8"))
         if auth_client is None:
             # Invalid credentials
@@ -107,7 +117,7 @@ class ProxyMerger(merger.MergedLDAPServer):
         
     def handle_LDAPSearchRequest(self, request, controls, reply):
         # this override is only to have a better control over errors
-        self.loadConfigs()
+        # self.loadConfigs()
         builder = DeferredRequestAggregator(reply, pureldap.LDAPSearchResultDone)
         for client in self.clients:
             d = client.send_multiResponse(request, self._gotResponse, reply)
@@ -131,11 +141,17 @@ class ProxyMerger(merger.MergedLDAPServer):
         proxyTSL = [c.tls for c in configs]
         return (proxyCredentials, proxyConfigs, proxyTSL)
     
-    def loadConfigs(self):
-        creds, configs, tsl = self._fetchConfigs()
-        self.credentials = creds
-        self.configs = configs
-        self.use_tls = tsl
+    def loadConfigs(self) -> defer.Deferred:
+        """Load the proxy configuration. Return a deferred that fires when completed."""
+        def _load(ignored=None):
+            creds, configs, tsl = self._fetchConfigs()
+            self.credentials = creds
+            self.configs = configs
+            self.use_tls = tsl
+
+        d = defer.succeed(None)
+        d.addCallback(_load)
+        return d
 
     # authenticate a user. Return None if not authorized
     def authenticate_client(self, dn, auth):
