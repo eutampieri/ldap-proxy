@@ -6,6 +6,7 @@ from proxy.proxydatabase import ProxyDatabase, ServerEntry, UserEntry
 from ldaptor.protocols import pureldap
 
 class TimeoutLDAPClient(ldapclient.LDAPClient):
+    """LDAP Client that can be set with a timeout for connection"""
     def __init__(self, timeout=30):
         self.timeout = timeout
         super().__init__()
@@ -27,6 +28,42 @@ class TimeoutLDAPClient(ldapclient.LDAPClient):
         d = super().send_multiResponse_ex(self, op, controls, handler, *args, **kwargs)
         d.addTimeout(self.timeout, reactor, self.__on_timeout)
         return d
+    
+class DeferredRequestAggregator():
+    """Deferred builder that simplifies the creation of DeferredList for replying to LDAPRequests."""
+    def __init__(self, reply, LDAPReplyMessageType: pureldap.LDAPProtocolResponse):
+        """Create an empty builder. Define the `reply` method and the `msg type` for response."""
+        self.requests = []
+        self.callbacks = []
+        self.msg_type = LDAPReplyMessageType
+        self.reply = reply
+
+    def append(self, request: defer.Deferred):
+        """Add a request to the list."""
+        self.requests.append(request)
+
+    def addErrback(self, errback):
+        """Add an errback to the final DeferredList."""
+        self.callbacks.append((False, errback))
+
+    def addCallback(self, callback):
+        """Add a callback to the final DeferredList."""
+        self.callbacks.append((True, callback))
+
+    def build(self) -> defer.DeferredList:
+        """Generate the DeferredList from the requests added. It automagically replies on error, so no management is needed."""
+        deferred = defer.DeferredList(self.requests, fireOnOneErrback=True, consumeErrors=True)
+        for c in self.callbacks:
+            if c[0]:
+                deferred.addCallback(c[1])
+            else:
+                deferred.addErrback(c[1])
+        def _replyWithError(failure): # failure is a Failure(FirstFailure)
+            f = failure.value.subFailure
+            r = self.msg_type(resultCode=f.value.resultCode)
+            [self.reply(r) for c in self.requests]
+        deferred.addErrback(_replyWithError)
+        return deferred
 
 class ProxyMerger(merger.MergedLDAPServer):
     def __init__(self, database: ProxyDatabase, timeout=30):
@@ -39,51 +76,6 @@ class ProxyMerger(merger.MergedLDAPServer):
         self.credentials = [i[1] for i in c]
         super().__init__([i[0] for i in c], [c.tls for c in configs])
 
-    # def _gotResponse(self, response, replies_list, deferred):
-    #     replies_list.append(response)
-
-    #     value = isinstance(
-    #         response,
-    #         (
-    #             pureldap.LDAPSearchResultDone,
-    #             pureldap.LDAPBindResponse,
-    #         ),
-    #     )
-    #     if value:
-    #         reactor.callWhenRunning(deferred.callback)
-    #     return value
-    
-    # def _clientQueue(self, request, controls, reply):
-    #     # Controls are ignored.
-    #     l = []
-    #     for c in self.clients:
-    #         if request.needs_answer:
-    #             replies = []
-    #             rd = defer.Deferred(replies)
-    #             rd.addCallback(defer.succeed)
-    #             rd.addErrback(defer.fail)
-    #             d = c.send_multiResponse(request, self._gotResponse, replies, rd)
-    #             d.addErrback(rd.errback)
-    #             l.append(rd)
-    #         else:
-    #             c.send_noResponse(request)
-        
-    #     dl = defer.DeferredList(l, fireOnOneErrback=True, consumeErrors=True)
-
-    #     def _pickWorstResponse(result: list[tuple]): #[(success, Result), ...]
-    #         res = max(result, key=lambda r: r[1].resultCode)
-    #         return res[1]
-    #     def _replyWithError(failure): # failure is a Failure(FirstFailure)
-    #         f = failure.value.subFailure
-    #         r = pureldap.LDAPBindResponse(resultCode=f.value.resultCode)
-    #         [reply(r) for c in self.clients]
-    #     def _replyWithSuccess(result):
-    #         r = _pickWorstResponse(result)
-    #         [reply(r) for c in self.clients]
-
-    #     dl.addCallback(_replyWithSuccess)
-    #     dl.addErrback(_replyWithError)
-
     def handle_LDAPBindRequest(self, request, controls, reply):
         auth_client = self.authenticate_client(request.dn.decode("utf-8"), request.auth.decode("utf-8"))
         if auth_client is None:
@@ -93,64 +85,35 @@ class ProxyMerger(merger.MergedLDAPServer):
             return defer.succeed(ldap_bind_reject)
         else:
             # Client registered: binding with own credentials
-            l = []
+            # for each client, send a bind request but with the credentials of the proxy
+            builder = DeferredRequestAggregator(reply, pureldap.LDAPBindResponse)
             for client, creds in zip(self.clients, self.credentials):
                 ldap_bind_request = pureldap.LDAPBindRequest(version=3, dn=creds[0], auth=creds[1])
                 d = client.send(ldap_bind_request)
-                l.append(d)
+                builder.append(d)
 
-            dl = defer.DeferredList(l, fireOnOneErrback=True, consumeErrors=True)
-
-            def _pickWorstResponse(result: list[tuple]): #[(success, Result), ...]
-                res = max(result, key=lambda r: r[1].resultCode)
-                return res[1]
-            def _replyWithError(failure): # failure is a Failure(FirstFailure)
-                f = failure.value.subFailure
-                r = pureldap.LDAPBindResponse(resultCode=f.value.resultCode)
-                [reply(r) for c in self.clients]
-            def _replyWithSuccess(result):
-                r = _pickWorstResponse(result)
+            def _pickWorstResult(result):
+                r = max(result, key=lambda r: r[1].resultCode)
+                return r[1]
+            def _replyWithSuccess(result): # result is [(bool, result), (bool, result), ...]
+                r = _pickWorstResult(result)
                 [reply(r) for c in self.clients]
 
-            dl.addCallback(_replyWithSuccess)
-            dl.addErrback(_replyWithError)
+            builder.addCallback(_replyWithSuccess)
+            builder.build()
+
             return defer.succeed(None)
         
     def handle_LDAPSearchRequest(self, request, controls, reply):
-        l = []
+        # this override is only to have a better control over errors
+        builder = DeferredRequestAggregator(reply, pureldap.LDAPSearchResultDone)
         for client in self.clients:
             d = client.send_multiResponse(request, self._gotResponse, reply)
-            l.append(d)
+            builder.append(d)
 
-        dl = defer.DeferredList(l, fireOnOneErrback=True, consumeErrors=True)
+        builder.build()
 
-        def _replyWithError(failure): # failure is a Failure(FirstFailure)
-            f = failure.value.subFailure
-            r = pureldap.LDAPSearchResultDone(resultCode=f.value.resultCode)
-            [reply(r) for c in self.clients]
-
-        dl.addErrback(_replyWithError)
         return defer.succeed(None)
-
-    # def _handle_LDAPBindRequest(self, request: LDAPBindRequest, controls, reply):
-    #     # authenticate user
-    #     auth_client = self.authenticate_client(request.dn.decode("utf-8"), request.auth.decode("utf-8"))
-    #     if auth_client is None:
-    #         invalid_credentials_result_code=49
-    #         print('Invalid credentials')
-    #         return reply(pureldap.LDAPBindResponse(resultCode=invalid_credentials_result_code))
-
-    #     else:
-    #         for client, creds in zip(self.clients, self.credentials):
-    #             ldap_bind_request = LDAPBindRequest(version=3, dn=creds[0], auth=creds[1])
-    #             d = client.send_multiResponse(ldap_bind_request, self._gotResponse, reply)
-    #             d.addErrback(defer.logError)
-    #     return defer.succeed(request)
-
-    # def add_server(self, server: ServerEntry):
-    #    c = self._ldap_config_from_db_entry(server)
-    #    self.configs.append(c[0])
-    #    self.credentials.append(c[1])
 
     def _ldap_config_from_db_entry(self, config: ServerEntry):
         return (
