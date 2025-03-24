@@ -75,10 +75,12 @@ class ProxyMerger(merger.MergedLDAPServer):
         self.protocol = lambda: TimeoutLDAPClient(timeout=timeout)
         self.allowed_operations = (pureldap.LDAPBindRequest, pureldap.LDAPSearchRequest)
         self.database = database
-
-        creds, configs, tsl = self._fetchConfigs()
-        self.credentials = creds
-        super().__init__(configs, tsl)
+        try:
+            creds, configs, tsl = self._fetchConfigs()
+            self.credentials = creds
+            super().__init__(configs, tsl)
+        except:
+            raise ConnectionError('Could not access the database for initialization.')
 
     def handle_LDAPBindRequest(self, request, controls, reply):
         def _authenticate(ignored=None):
@@ -107,10 +109,16 @@ class ProxyMerger(merger.MergedLDAPServer):
 
                 builder.addCallback(_replyWithSuccess)
                 return builder.build()
+            
+        def _replyWithServerError(failure):
+            r = pureldap.LDAPBindResponse(self.SERVER_DOWN)
+            reply(r)
+            [reply(r) for c in self.clients]
         
         d = self.loadConfigs()
         d.addCallback(_authenticate)
         d.addCallback(_handle_bind_request)
+        d.addErrback(_replyWithServerError)
         return d
         
     def handle_LDAPSearchRequest(self, request, controls, reply):
@@ -120,9 +128,14 @@ class ProxyMerger(merger.MergedLDAPServer):
                 d = client.send_multiResponse(request, self._gotResponse, reply)
                 builder.append(d)
             return builder.build()
+        
+        def _replyWithServerError(failure):
+            r = pureldap.LDAPSearchResultDone(self.SERVER_DOWN)
+            [reply(r) for c in self.clients]
     
         d = self.loadConfigs()
         d.addCallback(_handle_search_request)
+        d.addErrback(_replyWithServerError)
         return d
 
     def _ldap_config_from_db_entry(self, config: ServerEntry):
@@ -156,4 +169,5 @@ class ProxyMerger(merger.MergedLDAPServer):
     def authenticate_client(self, dn, auth) -> defer.Deferred:
         d = defer.succeed(None)
         d.addCallback(lambda _: self.database.get_authenticated_client(dn, auth))
+        d.addTimeout(self.timeout, reactor)
         return d
