@@ -66,6 +66,7 @@ class DeferredRequestAggregator():
         return deferred
 
 class ProxyMerger(merger.MergedLDAPServer):
+    """LDAP Proxy that redirects and aggregates all bind and search requests."""
 
     INVALID_CREDENTIALS = 49
     SERVER_DOWN = 81
