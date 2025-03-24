@@ -5,6 +5,7 @@ from test.mocks import *
 from test_utils import TestEnvironment
 from proxy.merger import ProxyMerger
 from twisted.internet.protocol import Factory
+from ldaptor.protocols.ldap import ldaperrors
 
 ### Tests for the LDAP proxy merger ###
 
@@ -87,9 +88,9 @@ class TestProxyMerger(twistedtest.TestCase):
 
         # start client
         clientDef = self.startClient(port=10389, client=BindingClient('cn=worng,dc=example,dc=org', 'wrongpassword'))
-        clientDef.addTimeout(2, reactor, onTimeoutCancel=lambda a, b: self.fail()) # timeout should not kick
-        clientDef.addCallback(self.fail) # should throw an error
+        clientDef.addCallback(self.fail)
         clientDef.addErrback(self.succeed)
+        clientDef.addTimeout(5, reactor, onTimeoutCancel=lambda err, t: self.fail())
 
         # wait completion
         return clientDef
@@ -112,11 +113,9 @@ class TestProxyMerger(twistedtest.TestCase):
 
         # start client
         clientDef = self.startClient(port=10389, client=BindingClient(client.dn, client.password))
-        def timeoutCallback(err, val):
-            self.fail()
         clientDef.addCallback(self.fail)
         clientDef.addErrback(self.succeed)
-        clientDef.addTimeout(5, reactor, onTimeoutCancel=timeoutCallback) # should reply before this timeout
+        clientDef.addTimeout(5, reactor, onTimeoutCancel=lambda err, t: self.fail())
 
         # wait completion
         return clientDef
@@ -171,16 +170,39 @@ class TestProxyMerger(twistedtest.TestCase):
 
         # start client
         clientDef = self.startClient(port=10389, client=SearchingClient('dc=example,dc=org', filter='(objectClass=*)'))
-        def timeoutCallback(err, val):
-            self.fail()
         clientDef.addCallback(self.fail)
         clientDef.addErrback(self.succeed)
-        clientDef.addTimeout(5, reactor, onTimeoutCancel=timeoutCallback) # timeout should kick
+        clientDef.addTimeout(5, reactor, onTimeoutCancel=lambda err, t: self.fail())
 
         return clientDef
     
-    # def test_only_read_operations_should_be_allowed(self):
-    #     pass
+    def test_only_read_operations_should_be_allowed(self):
+        # config
+        client = ClientEntry('cn=client,dc=example,dc=org', 'clientpassword')
+        servers = [
+            ServerEntry('127.0.0.1', 3890, 'dc=example,dc=org', 'cn=proxy,dc=example,dc=org', 'proxypassword'),
+            ServerEntry('127.0.0.1', 3891, 'dc=example,dc=org', 'cn=proxy,dc=example,dc=org', 'proxypassword')
+        ]
+
+        # start server
+        for s in servers:
+            self.startServer(port=s.port, server=AcceptBind)
+
+        # start proxy
+        proxy = lambda: ProxyMerger(OneClientDatabase(client, servers))
+        self.startServer(port=10389, server=proxy)
+
+        def _checkError(error):
+            self.assertIsInstance(error.value, ldaperrors.LDAPUnwillingToPerform)
+        # test Delete
+        clientDel = self.startClient(port=10389, client=DeletingClient('cn=client,dc=example,dc=org'))
+        clientDel.addBoth(_checkError)
+        # test Modify
+        clientMod = self.startClient(port=10389, client=ModifyingClient('cn=client,dc=example,dc=org'))
+        clientMod.addBoth(_checkError)
+
+        return defer.DeferredList([clientDel, clientMod])
+
     # def test_request_should_fail_when_database_is_unavailable(self):
     #     pass
 

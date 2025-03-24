@@ -12,8 +12,9 @@ from proxy.proxydatabase import ClientEntry, ServerEntry
 
 class MockLDAPClient():
     """A base mock for a LDAP client."""
-    def __init__(self):
+    def __init__(self, dn: str):
         self.conn = None
+        self.dn = DistinguishedName(dn)
 
     def close(self) -> None:
         """Close the client connection."""
@@ -34,13 +35,12 @@ class MockLDAPClient():
 class BindingClient(MockLDAPClient):
     """A mock LDAP client that makes a bind request."""
     def __init__(self, dn: str, password: str):
-        self.dn = dn
         self.password = password
-        super().__init__()
+        super().__init__(dn)
 
-    def bind(self, connection, dn: str, password: str) -> Deferred:
+    def bind(self, connection, password: str) -> Deferred:
         def _doBind(proto):
-            baseEntry = ldapsyntax.LDAPEntry(client=proto, dn=DistinguishedName(dn))
+            baseEntry = ldapsyntax.LDAPEntry(client=proto, dn=self.dn)
             x = baseEntry.bind(password=password)
             return x
         connection.addCallbacks(_doBind, print)
@@ -48,20 +48,19 @@ class BindingClient(MockLDAPClient):
 
     def run(self, host, port) -> Deferred:
         d = super().run(host, port)
-        return self.bind(d, self.dn, self.password)
+        return self.bind(d, self.password)
 
 class SearchingClient(MockLDAPClient):
     """A mock LDAP client that makes a search request."""
     def __init__(self, base_dn: str, filter: str):
-        self.base_dn = base_dn
         self.filter = filter
-        super().__init__()
+        super().__init__(base_dn)
 
-    def search(self, connection, base_dn: str, filter: str) -> Deferred:
+    def search(self, connection, filter: str) -> Deferred:
         def _doSearch(proto):
             from ldaptor import ldapfilter
             searchFilter = ldapfilter.parseFilter(filter)
-            baseEntry = ldapsyntax.LDAPEntry(client=proto, dn=DistinguishedName(base_dn))
+            baseEntry = ldapsyntax.LDAPEntry(client=proto, dn=self.dn)
             x = baseEntry.search(filterObject=searchFilter)
             return x
         connection.addCallbacks(_doSearch, print)
@@ -69,7 +68,42 @@ class SearchingClient(MockLDAPClient):
 
     def run(self, host, port) -> Deferred:
         d = super().run(host, port)
-        return self.search(d, self.base_dn, self.filter)
+        return self.search(d, self.filter)
+    
+class DeletingClient(MockLDAPClient):
+    """A mock LDAP client that makes a delete request."""
+    def __init__(self, dn: str):
+        super().__init__(dn)
+
+    def delete(self, connection) -> Deferred:
+        def _doDelete(proto):
+            baseEntry = ldapsyntax.LDAPEntry(client=proto, dn=self.dn)
+            x = baseEntry.delete()
+            return x
+        connection.addCallbacks(_doDelete, print)
+        return connection
+
+    def run(self, host, port) -> Deferred:
+        d = super().run(host, port)
+        return self.delete(d)
+    
+class ModifyingClient(MockLDAPClient):
+    """A mock LDAP client that makes a modify request."""
+    def __init__(self, dn: str):
+        super().__init__(dn)
+
+    def modify(self, connection) -> Deferred:
+        def _doModify(proto):
+            baseEntry = ldapsyntax.LDAPEntry(client=proto, dn=self.dn)
+            baseEntry['MockAttribute'] = ['modified']
+            x = baseEntry.commit()
+            return x
+        connection.addCallbacks(_doModify, print)
+        return connection
+
+    def run(self, host, port) -> Deferred:
+        d = super().run(host, port)
+        return self.modify(d)
 
 ### LDAP Server ###
 
