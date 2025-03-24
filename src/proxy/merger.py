@@ -7,7 +7,7 @@ from ldaptor.protocols import pureldap
 
 class TimeoutLDAPClient(ldapclient.LDAPClient):
     """LDAP Client that can be set with a timeout for connection"""
-    def __init__(self, timeout=30):
+    def __init__(self, timeout):
         self.timeout = timeout
         super().__init__()
 
@@ -66,7 +66,12 @@ class DeferredRequestAggregator():
         return deferred
 
 class ProxyMerger(merger.MergedLDAPServer):
+
+    INVALID_CREDENTIALS = 49
+    SERVER_DOWN = 81
+
     def __init__(self, database: ProxyDatabase, timeout=30):
+        self.timeout = timeout
         self.protocol = lambda: TimeoutLDAPClient(timeout=timeout)
         self.allowed_operations = (pureldap.LDAPBindRequest, pureldap.LDAPSearchRequest)
         self.database = database
@@ -75,57 +80,50 @@ class ProxyMerger(merger.MergedLDAPServer):
         self.credentials = creds
         super().__init__(configs, tsl)
 
-    def handle(self, msg):
-        # override handle() so that it loads the configuration from the database
-        # before processing the request
-        h = super().handle(msg)
-        
-        if isinstance(msg.value, self.allowed_operations):
-            d = self.loadConfigs()
-            d.addCallback(lambda _: h)
-            return d
-        else:
-            return h
-
     def handle_LDAPBindRequest(self, request, controls, reply):
-        auth_client = self.authenticate_client(request.dn.decode("utf-8"), request.auth.decode("utf-8"))
-        if auth_client is None:
-            # Invalid credentials
-            ldap_bind_reject = pureldap.LDAPBindResponse(resultCode=49)
-            reply(ldap_bind_reject)
-            return defer.succeed(ldap_bind_reject)
-        else:
-            # Client registered: binding with own credentials
-            # for each client, send a bind request but with the credentials of the proxy
-            builder = DeferredRequestAggregator(reply, pureldap.LDAPBindResponse)
-            for client, creds in zip(self.clients, self.credentials):
-                ldap_bind_request = pureldap.LDAPBindRequest(version=3, dn=creds[0], auth=creds[1])
-                d = client.send(ldap_bind_request)
-                builder.append(d)
+        def _authenticate(ignored=None):
+            return self.authenticate_client(request.dn.decode("utf-8"), request.auth.decode("utf-8"))
+        
+        def _handle_bind_request(auth_client):
+            if auth_client is None:
+                # Invalid credentials
+                [reply(pureldap.LDAPBindResponse(self.INVALID_CREDENTIALS)) for c in self.clients]
+                
+            else:
+                # Client registered: binding with own credentials
+                # for each client, send a bind request but with the credentials of the proxy
+                builder = DeferredRequestAggregator(reply, pureldap.LDAPBindResponse)
+                for client, creds in zip(self.clients, self.credentials):
+                    ldap_bind_request = pureldap.LDAPBindRequest(version=3, dn=creds[0], auth=creds[1])
+                    d = client.send(ldap_bind_request)
+                    builder.append(d)
 
-            def _pickWorstResult(result):
-                r = max(result, key=lambda r: r[1].resultCode)
-                return r[1]
-            def _replyWithSuccess(result): # result is [(bool, result), (bool, result), ...]
-                r = _pickWorstResult(result)
-                [reply(r) for c in self.clients]
+                def _pickWorstResult(result):
+                    r = max(result, key=lambda r: r[1].resultCode)
+                    return r[1]
+                def _replyWithSuccess(result): # result is [(bool, result), (bool, result), ...]
+                    r = _pickWorstResult(result)
+                    [reply(r) for c in self.clients]
 
-            builder.addCallback(_replyWithSuccess)
-            builder.build()
-
-            return defer.succeed(None)
+                builder.addCallback(_replyWithSuccess)
+                return builder.build()
+        
+        d = self.loadConfigs()
+        d.addCallback(_authenticate)
+        d.addCallback(_handle_bind_request)
+        return d
         
     def handle_LDAPSearchRequest(self, request, controls, reply):
-        # this override is only to have a better control over errors
-        # self.loadConfigs()
-        builder = DeferredRequestAggregator(reply, pureldap.LDAPSearchResultDone)
-        for client in self.clients:
-            d = client.send_multiResponse(request, self._gotResponse, reply)
-            builder.append(d)
-
-        builder.build()
-
-        return defer.succeed(None)
+        def _handle_search_request(ignored=None):
+            builder = DeferredRequestAggregator(reply, pureldap.LDAPSearchResultDone)
+            for client in self.clients:
+                d = client.send_multiResponse(request, self._gotResponse, reply)
+                builder.append(d)
+            return builder.build()
+    
+        d = self.loadConfigs()
+        d.addCallback(_handle_search_request)
+        return d
 
     def _ldap_config_from_db_entry(self, config: ServerEntry):
         return (
@@ -151,8 +149,11 @@ class ProxyMerger(merger.MergedLDAPServer):
 
         d = defer.succeed(None)
         d.addCallback(_load)
+        d.addTimeout(self.timeout, reactor)
         return d
 
     # authenticate a user. Return None if not authorized
-    def authenticate_client(self, dn, auth):
-        return self.database.get_authenticated_client(dn, auth)
+    def authenticate_client(self, dn, auth) -> defer.Deferred:
+        d = defer.succeed(None)
+        d.addCallback(lambda _: self.database.get_authenticated_client(dn, auth))
+        return d

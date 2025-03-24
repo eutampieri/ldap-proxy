@@ -51,7 +51,7 @@ class TestProxyMerger(twistedtest.TestCase):
         client = ClientEntry('cn=client,dc=example,dc=org', 'clientpassword')
         servers = [
             ServerEntry('127.0.0.1', 3890, 'dc=example,dc=org', 'cn=proxy,dc=example,dc=org', 'proxypassword'),
-            ServerEntry('127.0.0.1', 3891, 'dc=example,dc=org', 'cn=proxy,dc=example,dc=org', 'proxypassword')
+            ServerEntry('127.0.0.1', 3891, 'dc=example,dc=org', 'cn=proxy,dc=example,dc=org', 'proxypassword'),
         ]
 
         # start server
@@ -75,7 +75,7 @@ class TestProxyMerger(twistedtest.TestCase):
         client = ClientEntry('cn=client,dc=example,dc=org', 'clientpassword')
         servers = [
             ServerEntry('127.0.0.1', 3890, 'dc=example,dc=org', 'cn=proxy,dc=example,dc=org', 'proxypassword'),
-            ServerEntry('127.0.0.1', 3891, 'dc=example,dc=org', 'cn=proxy,dc=example,dc=org', 'proxypassword')
+            ServerEntry('127.0.0.1', 3891, 'dc=example,dc=org', 'cn=proxy,dc=example,dc=org', 'proxypassword'),
         ]
 
         # start server
@@ -203,8 +203,29 @@ class TestProxyMerger(twistedtest.TestCase):
 
         return defer.DeferredList([clientDel, clientMod])
 
-    # def test_request_should_fail_when_database_is_unavailable(self):
-    #     pass
+    def test_request_should_fail_when_database_is_unavailable(self):
+        # config
+        client = ClientEntry('cn=client,dc=example,dc=org', 'clientpassword')
+        servers = [
+            ServerEntry('127.0.0.1', 3890, 'dc=example,dc=org', 'cn=proxy,dc=example,dc=org', 'proxypassword'),
+            ServerEntry('127.0.0.1', 3891, 'dc=example,dc=org', 'cn=proxy,dc=example,dc=org', 'proxypassword')
+        ]
+
+        # start server
+        self.startServer(port=3890, server=AcceptBind)
+        self.startServer(port=3891, server=AcceptBind)
+
+        # start proxy
+        proxy = lambda: ProxyMerger(ErrorThrowDatabase(client, servers), timeout=1)
+        self.startServer(port=10389, server=proxy)
+
+        # start client
+        clientDef = self.startClient(port=10389, client=BindingClient(client.dn, client.password))
+        clientDef.addCallback(self.fail)
+        clientDef.addErrback(self.succeed)
+        clientDef.addTimeout(5, reactor, onTimeoutCancel=lambda err, t: self.fail())
+
+        return clientDef
 
 if __name__ == '__main__':
     unittest.main()

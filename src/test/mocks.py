@@ -169,3 +169,8 @@ class OneClientDatabase(MockProxyDatabase):
     
     def get_authenticated_client(self, client_dn, client_auth) -> ClientEntry | None:
         return self.client if client_dn == self.client.dn and client_auth == self.client.password else None
+    
+class ErrorThrowDatabase(OneClientDatabase):
+    """A mock database that throws error when queried."""
+    def get_authenticated_client(self, client_dn, client_auth) -> ClientEntry | None:
+        raise RuntimeError('Error raised by mock method')
