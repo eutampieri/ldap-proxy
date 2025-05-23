@@ -2,7 +2,6 @@ import unittest
 import twisted.internet.error
 from twisted.trial import unittest as twistedtest
 from test.mocks import *
-from test_utils import TestEnvironment
 from proxy.merger import ProxyMerger
 from twisted.internet.protocol import Factory
 from ldaptor.protocols.ldap import ldaperrors

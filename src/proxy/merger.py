@@ -113,7 +113,6 @@ class ProxyMerger(merger.MergedLDAPServer):
             
         def _replyWithServerError(failure):
             r = pureldap.LDAPBindResponse(self.SERVER_DOWN)
-            reply(r)
             [reply(r) for c in self.clients]
         
         d = self.loadConfigs()
