@@ -1,0 +1,61 @@
+version: '3.8'
+services:
+  web:
+    image: ldap-proxy-backend # docker image build -t ldap-proxy-backend .
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: always
+    ports:
+      - "389:389"
+    environment:
+      MONGO_PORT: 27017
+      DB_URI: mongodb://mongodb1:27017,mongodb2:27017,mongodb3:27017/ldap-proxy-database?replicaSet=rs0
+    depends_on:
+      - mongodb1
+    deploy:
+      replicas: 2
+
+  mongodb1:
+    image: mongo
+    restart: always
+    command: [ "--replSet", "rs0", "--bind_ip_all", "--port", "27017" ]
+    volumes:
+     - mongodata1:/data/db
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  mongodb2:
+    image: mongo
+    restart: always
+    command: [ "--replSet", "rs0", "--bind_ip_all", "--port", "27017" ]
+    volumes:
+      - mongodata2:/data/db
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  mongodb3:
+    image: mongo
+    restart: always
+    command: [ "--replSet", "rs0", "--bind_ip_all", "--port", "27017" ]
+    volumes:
+      - mongodata3:/data/db
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  mongoexpress:
+    image: mongo-express
+    environment:
+      ME_CONFIG_MONGODB_ADMINUSERNAME: admin
+      ME_CONFIG_MONGODB_ADMINPASSWORD: pass
+      ME_CONFIG_MONGODB_URL: mongodb://mongodb1:27017,mongodb2:27017,mongodb3:27017/ldap-proxy-database?replicaSet=rs0
+    restart: always
+    ports:
+      - "8081:8081"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+volumes:
+  mongodata1:
+  mongodata2:
+  mongodata3:
