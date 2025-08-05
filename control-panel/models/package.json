@@ -1,0 +1,7 @@
+{
+  "name": "@ldap-proxy-config/models",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "dependencies": {}
+}
