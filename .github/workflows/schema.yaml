@@ -1,0 +1,15 @@
+name: Test schema correspondence
+on:
+  push:
+
+jobs:
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Install the JSON Schema CLI
+        uses: sourcemeta/jsonschema@v11.0.2
+
+      - run: make test_schema
