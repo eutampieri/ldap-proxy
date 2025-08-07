@@ -11,5 +11,5 @@ data = [
 ]
 
 for t, e in data:
-    with open(f"{t}_python.json", "w") as f:
+    with open(f"tests/schemas/{t}_python.json", "w") as f:
         json.dump(e.to_object(), f)
