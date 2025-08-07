@@ -12,4 +12,4 @@ jobs:
       - name: Install the JSON Schema CLI
         uses: sourcemeta/jsonschema@v11.0.2
 
-      - run: cat Makefile && make test_schema
+      - run: make test_schema
