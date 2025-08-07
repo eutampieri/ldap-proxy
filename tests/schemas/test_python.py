@@ -2,7 +2,7 @@ import json
 import sys
 sys.path.append("src/proxy")
 
-from proxydatabase import *
+from entries import *
 
 data = [
     ("server", ServerEntry("127.0.0.1", "389", "", "", "")),
