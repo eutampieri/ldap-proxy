@@ -26,7 +26,7 @@
             "type": "string"
         },
         "tls": {
-            "description": "Wheter we need TLS to connect to the server or not",
+            "description": "Whether we need TLS to connect to the server or not",
             "type": "boolean"
         }
     },
