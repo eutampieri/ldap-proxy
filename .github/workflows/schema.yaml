@@ -3,7 +3,7 @@ on:
   push:
 
 jobs:
-  docker:
+  test:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Repository
@@ -12,4 +12,4 @@ jobs:
       - name: Install the JSON Schema CLI
         uses: sourcemeta/jsonschema@v11.0.2
 
-      - run: make test_schema
+      - run: cat Makefile && make test_schema
