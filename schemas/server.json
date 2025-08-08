@@ -1,0 +1,41 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "$id": "https://eutampieri.eu/jsonschema/ldap_proxy/server.json",
+    "title": "Server",
+    "description": "LDAP backend connection details",
+    "type": "object",
+    "properties": {
+        "ip": {
+            "description": "The server's IP address",
+            "type": "string"
+        },
+        "port": {
+            "description": "The server's port",
+            "type": "string"
+        },
+        "base_dn": {
+            "description": "The server's base DN",
+            "type": "string"
+        },
+        "bind_dn": {
+            "description": "The server's bind DN",
+            "type": "string"
+        },
+        "bind_password": {
+            "description": "The server's bind password",
+            "type": "string"
+        },
+        "tls": {
+            "description": "Whether we need TLS to connect to the server or not",
+            "type": "boolean"
+        }
+    },
+    "required": [
+        "ip",
+        "port",
+        "base_dn",
+        "bind_dn",
+        "bind_password",
+        "tls"
+    ]
+}

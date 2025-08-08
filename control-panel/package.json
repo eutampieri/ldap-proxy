@@ -1,0 +1,13 @@
+{
+  "name": "ldap-proxy-config",
+  "workspaces": [
+    "backend",
+    "frontend",
+    "models"
+  ],
+  "devDependencies": {
+    "rollup": "^4.34.4",
+    "typescript": "^5.7.3",
+    "vite": "^6.1.0"
+  }
+}

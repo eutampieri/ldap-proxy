@@ -1,0 +1,26 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "$id": "https://eutampieri.eu/jsonschema/ldap_proxy/user.json",
+    "title": "User",
+    "description": "An user is the entity who can administrate the LDAP proxy",
+    "type": "object",
+    "properties": {
+        "user": {
+            "description": "The user's username",
+            "type": "string"
+        },
+        "password": {
+            "description": "The user's password",
+            "type": "string"
+        },
+        "is_admin": {
+            "description": "Whether the user can add other users or not",
+            "type": "boolean"
+        }
+    },
+    "required": [
+        "user",
+        "password",
+        "is_admin"
+    ]
+}

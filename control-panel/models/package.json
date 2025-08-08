@@ -1,0 +1,13 @@
+{
+  "name": "@ldap-proxy-config/models",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "schema": "json2ts --declareExternallyReferenced=false --cwd=../../schemas -i ../../schemas -o src/generated"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "json-schema-to-typescript": "^15.0.4"
+  }
+}

@@ -1,0 +1,21 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "$id": "https://eutampieri.eu/jsonschema/ldap_proxy/client.json",
+    "title": "Client",
+    "description": "A client can access the LDAP proxy via LDAP",
+    "type": "object",
+    "properties": {
+        "dn": {
+            "description": "The client's bind DN",
+            "type": "string"
+        },
+        "password": {
+            "description": "The client's bind password",
+            "type": "string"
+        }
+    },
+    "required": [
+        "dn",
+        "password"
+    ]
+}
