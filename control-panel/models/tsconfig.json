@@ -1,15 +1,7 @@
 {
     "extends": "../tsconfig.json",
-    "references": [],
     "compilerOptions": {
-        "paths": {
-            "@/*": [
-                "./src/*"
-            ]
-        }
-    },
-    "exclude": [
-        "node_modules",
-        "dist"
-    ]
+        "module": "ESNext",
+        "moduleResolution": "bundler"
+    }
 }
