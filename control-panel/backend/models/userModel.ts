@@ -1,5 +1,5 @@
 import { Schema, model } from 'mongoose';
-import { User } from '@ldap-proxy-config/models/generated/user.js';
+import { User } from '@ldap-proxy-config/models/src/generated/user.js';
 
 import schema from "../../../schemas/user.json"
 
