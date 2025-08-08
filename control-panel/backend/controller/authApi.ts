@@ -5,6 +5,7 @@ import { JWT_KEY, ISSUER, AUDIENCE } from '../utils.js';
 import { verify } from '@node-rs/argon2';
 import { Request, Response } from 'express';
 import { AuthRequest } from '@ldap-proxy-config/models/src/requests.js';
+import { JWT } from "@ldap-proxy-config/models/src/index.js";
 
 async function lookupUsername(username: string): Promise<User | null> {
     const result = (await UserDB.findOne({ username }).exec() as User | undefined | null);
@@ -24,11 +25,11 @@ export async function authenticate(req: Request<{}, {}, AuthRequest>, res: Respo
         if (user === null || !await verify(user.password, password)) {
             res.status(401).send("Unauthorized");
         } else {
-            const token = {
-                username: user.username,
+            const token: JWT = {
+                username: user.user,
                 isAdmin: user.is_admin,
             };
-            const jwt = await new SignJWT(token) // details to  encode in the token
+            const jwt = await new SignJWT(token as any) // details to  encode in the token
                 .setProtectedHeader({
                     alg: 'HS256'
                 }) // algorithm

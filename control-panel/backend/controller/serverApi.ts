@@ -50,7 +50,7 @@ export default class API {
         }
     }
 
-    static async deleteCustomer(req: Request<{ id: string }>, res: Response) {
+    static async deleteServer(req: Request<{ id: string }>, res: Response) {
         const id = req.params.id;
         try {
             // Trova il cliente per ottenere i suoi corsi
