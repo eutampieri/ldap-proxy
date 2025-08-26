@@ -7,6 +7,8 @@ import { Request, Response } from 'express';
 import { AuthRequest } from '@ldap-proxy-config/models/src/requests.js';
 import { JWT } from "@ldap-proxy-config/models/src/index.js";
 
+const ONE_DAY = 24 * 60 * 60;
+
 async function lookupUsername(username: string): Promise<User | null> {
     const result = (await UserDB.findOne({ username }).exec() as User | undefined | null);
     if (result) {
@@ -34,9 +36,9 @@ export async function authenticate(req: Request<{}, {}, AuthRequest>, res: Respo
                     alg: 'HS256'
                 }) // algorithm
                 .setIssuedAt()
-                .setIssuer(ISSUER) // issuer
-                .setAudience(AUDIENCE) // audience
-                .setExpirationTime("1 day") // FIXME sketchy
+                .setIssuer(ISSUER)
+                .setAudience(AUDIENCE)
+                .setExpirationTime(ONE_DAY)
                 .sign(JWT_KEY);
             res.contentType("text/plain").send(jwt);
         }
