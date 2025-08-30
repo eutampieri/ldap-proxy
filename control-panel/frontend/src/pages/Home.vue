@@ -22,7 +22,7 @@ const privilege = admin && 'hasFullPrivileges' in admin ? admin.hasFullPrivilege
     </section>
     <section v-if="privilege" class="d-flex flex-column mt-4">
         <h3 class="mx-auto">Admins</h3>
-        <MainButton :path="'/admins'">Create admin</MainButton>
-        <MainButton :path="'/admins/new'">View admins</MainButton>
+        <MainButton :path="'/admins/new'">Create admin</MainButton>
+        <MainButton :path="'/admins/'">View admins</MainButton>
     </section>
 </template>
