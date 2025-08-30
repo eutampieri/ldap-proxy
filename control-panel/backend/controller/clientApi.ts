@@ -63,4 +63,13 @@ export default class API {
             res.status(500).json({ message: (error as Error).message });
         }
     }
+    static async fetchClient(req: Request<{ id: string }>, res: Response) {
+        try {
+            const user = await DB.findById(req.params.id).select("-password").exec();
+            res.status(200).json(user);
+        } catch (error) {
+            res.status(404).json({ message: (error as Error).message })
+        }
+    }
+
 }
