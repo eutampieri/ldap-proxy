@@ -62,6 +62,6 @@ const filter = (d: Client | RowData, s: string) =>
 
 </script>
 <template>
-    <h2>All servers</h2>
+    <h2>All clients</h2>
     <ListView :data="data" :mobile-header="mobileHeader" :filter-function="filter"></ListView>
 </template>

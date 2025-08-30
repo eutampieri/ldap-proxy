@@ -36,7 +36,7 @@ const createRequest = () => ({
     password: password.value == '*******' ? undefined : password.value,
 }) as Client;
 
-async function handleUpdateCustomer() {
+async function handleUpdateClient() {
     try {
         const request = createRequest()
         const id = props.id!;
@@ -62,7 +62,7 @@ async function handleUpdateCustomer() {
         });
     }
 }
-async function handleCreateCustomer() {
+async function handleCreateClient() {
     try {
         const request = createRequest();
         const response = await client.createClient(request);
@@ -103,9 +103,9 @@ async function handleCreateCustomer() {
                     Password
                 </GenericInput>
 
-                <button v-if="props.id" class="btn btn-primary" type="button" @click="handleUpdateCustomer">Update
+                <button v-if="props.id" class="btn btn-primary" type="button" @click="handleUpdateClient">Update
                     Client {{ dn }}</button>
-                <button v-else class="btn btn-primary" type="button" @click="handleCreateCustomer">Create Client {{
+                <button v-else class="btn btn-primary" type="button" @click="handleCreateClient">Create Client {{
                     dn }}</button>
             </form>
         </SectionContainerItem>
