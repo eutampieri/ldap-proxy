@@ -40,7 +40,7 @@ const data = computed<ListData>((): ListData => {
 const edit = (d: Server) => router.push({ path: '/servers/' + d._id })
 const del = async (d: Server) => {
     if (await confirm(`Are you sure you want to delete server ${d.ip}?`)) {
-        client.deleteAdmin(d._id as string).then(r => {
+        client.deleteServer(d._id as string).then(r => {
             if (r) {
                 servers.value = servers.value.filter(a => a._id != d._id)
                 notification.fire({
@@ -62,10 +62,10 @@ const del = async (d: Server) => {
 }
 
 const mobileHeader = (d: User | RowData) =>
-    `${d.user}`;
+    `${d.ip}`;
 
 const filter = (d: User | RowData, s: string) =>
-    (d.user as string).toLocaleLowerCase().indexOf(s.toLowerCase()) >= 0;
+    (d.ip as string).toLocaleLowerCase().indexOf(s.toLowerCase()) >= 0;
 
 </script>
 <template>
