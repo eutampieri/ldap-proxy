@@ -1,6 +1,7 @@
 <script lang="ts" setup>
 import BackButton from '@/components/BackButton.vue';
 import PageTitle from '@/components/PageTitle.vue';
+import UserProfile from './UserProfile.vue';
 </script>
 
 <template>
@@ -8,6 +9,7 @@ import PageTitle from '@/components/PageTitle.vue';
         <BackButton buttonText="Back" />
 
         <PageTitle title="LDAP proxy" class="header-title" />
+        <UserProfile class="profile-icon" />
 
     </header>
 </template>
