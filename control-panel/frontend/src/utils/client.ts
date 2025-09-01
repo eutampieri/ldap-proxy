@@ -103,10 +103,10 @@ export class Client {
     }
 
 
-    public createUsers(user: User): Promise<boolean> {
+    public createUser(user: User): Promise<boolean> {
         return this.apiRequest("POST", "/users/", user).then(r => r.status == 201);
     }
-    public updateUsers(id: string, server: User): Promise<boolean> {
+    public updateUser(id: string, server: User): Promise<boolean> {
         return this.apiRequest("PUT", "/users/", { _id: id, ...server }).then(r => r.status == 201);
     }
     public listUsers(): Promise<User[]> {
@@ -115,7 +115,7 @@ export class Client {
     public getUserById(id: string): Promise<User> {
         return this.apiRequest("GET", `/users/${id}`).then(r => r.json());
     }
-    public deleteUsers(id: string): Promise<boolean> {
+    public deleteUser(id: string): Promise<boolean> {
         return this.apiRequest("DELETE", `/users/${id}`).then(r => r.status == 200);
     }
 }

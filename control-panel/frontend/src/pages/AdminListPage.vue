@@ -35,7 +35,7 @@ const data = computed<ListData>((): ListData => {
 const edit = (d: User) => router.push({ path: '/admins/' + d._id })
 const del = async (d: User) => {
     if (await confirm(`Are you sure you want to delete admin ${d.user}?`)) {
-        client.deleteClient(d._id as string).then(r => {
+        client.deleteUser(d._id as string).then(r => {
             if (r) {
                 admins.value = admins.value.filter(a => a._id != d._id)
                 notification.fire({

@@ -44,7 +44,7 @@ async function handleUpdateAdmin() {
     try {
         const request = createRequest()
         const id = props.id!;
-        const response = await client.updateUsers(id, request);
+        const response = await client.updateUser(id, request);
 
         if (response) {
             notification.fire({
@@ -69,7 +69,7 @@ async function handleUpdateAdmin() {
 async function handleCreateAdmin() {
     try {
         const request = createRequest();
-        const response = await client.createUsers(request);
+        const response = await client.createUser(request);
 
         if (response) {
             notification.fire({
