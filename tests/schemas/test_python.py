@@ -1,6 +1,6 @@
 import json
 import sys
-sys.path.append("src/proxy")
+sys.path.append("merger/src/proxy")
 
 from entries import *
 

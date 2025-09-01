@@ -1,26 +1,26 @@
 # Use a Node.js image as base
 FROM node:22-alpine
 
-# Set the working directory inside the container
-#RUN mkdir /app
-
-WORKDIR /app
 ENV MONGODB_URI="mongodb://mongodb:27017/gym"
 
-# Copy necessary files from host to container
-COPY package.json .
-COPY package-lock.json .
-COPY . .
+WORKDIR /app
+
+COPY schemas ./schemas
 
 WORKDIR /app/control-panel
 
-# Install project dependencies
-RUN npm install
+# Copy necessary files from host to container
+COPY control-panel/backend ./backend
+COPY control-panel/models ./models
+COPY control-panel/*.json .
 
-WORKDIR /app/models
-RUN ../node_modules/typescript/bin/tsc 
-WORKDIR /app/backend
-RUN ../node_modules/typescript/bin/tsc 
+# Install project dependencies
+RUN npm ci
+
+WORKDIR /app/control-panel/models
+RUN ../node_modules/typescript/bin/tsc
+WORKDIR /app/control-panel/backend
+RUN ../node_modules/typescript/bin/tsc
 
 # Expose the port that the Express server is listening on
 EXPOSE 3000

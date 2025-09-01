@@ -1,4 +1,4 @@
-import { default as UserDB } from '../models/userModel';
+import { default as UserDB } from '../models/userModel.js';
 import { User } from '@ldap-proxy-config/models/src/generated/user.js';
 import { SignJWT } from 'jose';
 import { JWT_KEY, ISSUER, AUDIENCE } from '../utils.js';

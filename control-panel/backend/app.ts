@@ -2,13 +2,13 @@ import express, { json } from 'express';
 import { connect } from 'mongoose';
 import logger from 'morgan';
 import { hash } from '@node-rs/argon2';
-import { default as UserDB } from "./models/userModel";
+import { default as UserDB } from "./models/userModel.js";
 import { User } from "@ldap-proxy-config/models/src/generated/user.js";
 
-import clients from './routes/clientRoutes';
-import servers from './routes/serverRoutes';
-import users from './routes/userRoutes';
-import auth from './routes/authRoutes';
+import clients from './routes/clientRoutes.js';
+import servers from './routes/serverRoutes.js';
+import users from './routes/userRoutes.js';
+import auth from './routes/authRoutes.js';
 
 
 // Inizializziamo l'applicazione Express

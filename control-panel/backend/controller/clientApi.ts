@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { default as DB } from '../models/clientModel';
+import { default as DB } from '../models/clientModel.js';
 import { Client } from '@ldap-proxy-config/models/src/generated/client.js';
 import { Error } from 'mongoose';
 

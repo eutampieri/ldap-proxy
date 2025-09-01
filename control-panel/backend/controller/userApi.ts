@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { default as DB } from '../models/userModel';
+import { default as DB } from '../models/userModel.js';
 import { User } from '@ldap-proxy-config/models/src/generated/user.js';
 import { Error } from 'mongoose';
 
