@@ -1,12 +1,49 @@
 version: '3.8'
 services:
-  web:
+  traefik:
+    image: traefik:v3.3
+    restart: always
+    command: --api.insecure=true --providers.docker --log.level=DEBUG
+    ports:
+      - "8080:80"
+      - "8081:8080"
+    depends_on:
+      - backend
+      - frontend
+    deploy:
+      placement:
+        constraints:
+          - node.role == manager
+    volumes:
+      # Add Docker as a mounted volume, so that Traefik can read the labels of other services
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+
+  backend:
     image: ghcr.io/eutampieri/ldap-proxy/backend # docker image build -t ldap-proxy-backend .
     restart: always
-    ports:
-      - "389:389"
     environment:
       MONGO_PORT: 27017
+      DB_URI: mongodb://mongodb1:27017,mongodb2:27017,mongodb3:27017/ldap-proxy-database?replicaSet=rs0
+    depends_on:
+      - mongodb1
+    deploy:
+      replicas: 2
+  
+  frontend:
+    image: ghcr.io/eutampieri/ldap-proxy/frontend # docker image build -t ldap-proxy-backend .
+    restart: always
+    environment:
+      MONGO_PORT: 27017
+      DB_URI: mongodb://mongodb1:27017,mongodb2:27017,mongodb3:27017/ldap-proxy-database?replicaSet=rs0
+    depends_on:
+      - mongodb1
+    deploy:
+      replicas: 2
+  
+  merger:
+    image: ghcr.io/eutampieri/ldap-proxy/merger # docker image build -t ldap-proxy-backend .
+    restart: always
+    environment:
       DB_URI: mongodb://mongodb1:27017,mongodb2:27017,mongodb3:27017/ldap-proxy-database?replicaSet=rs0
     depends_on:
       - mongodb1
