@@ -15,4 +15,5 @@ docker: docker_backend docker_frontend docker_merger
 docker_backend: generate_ts_interfaces
 	docker build -t ghcr.io/eutampieri/ldap-proxy/backend -f control-panel/backend/Dockerfile .
 docker_frontend:
+	docker build -t ghcr.io/eutampieri/ldap-proxy/frontend -f control-panel/frontend/Dockerfile .
 docker_merger:
