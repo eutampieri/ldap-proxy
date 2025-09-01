@@ -30,6 +30,14 @@ export default class API {
         }
     }
 
+    static async fetchServer(req: Request<{ id: string }>, res: Response) {
+        try {
+            const user = await DB.findById(req.params.id).select("-bind_password").exec();
+            res.status(200).json(user);
+        } catch (error) {
+            res.status(404).json({ message: (error as Error).message })
+        }
+    }
 
     static async updateServer(req: Request<{}, {}, Server>, res: Response) {
         const id = req.body._id;

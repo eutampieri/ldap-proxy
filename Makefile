@@ -8,4 +8,4 @@ test_schema: # Test that the python objects match with the JSONschema
 	done
 
 generate_ts_interfaces:
-	cd control-panel/schemas && npm run schema
+	cd control-panel/models && npm run schema

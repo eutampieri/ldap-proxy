@@ -8,5 +8,6 @@ router.post("/", wrapMiddleware(adminAuth, API.createUser))
 router.get("/", wrapMiddleware(adminAuth, API.fetchAllUsers))
 router.put("/", wrapMiddleware(adminAuth, API.updateUser))
 router.delete("/:id", wrapMiddleware(adminAuth, API.deleteUser))
+router.get("/:id", wrapMiddleware(adminAuth, API.fetchUser))
 
 export default router
