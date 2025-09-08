@@ -8,7 +8,7 @@ test_schema: # Test that the python objects match with the JSONschema
 	done
 
 generate_ts_interfaces:
-	cd control-panel/models && npm run schema
+	cd control-panel/models && npm i && npm run schema
 
 docker: docker_backend docker_frontend docker_merger
 
