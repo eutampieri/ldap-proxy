@@ -28,7 +28,9 @@ services:
       - mongodb1
     deploy:
       replicas: 2
-  
+    labels:
+     - "traefik.http.services.backend.loadbalancer.server.port=3000"
+     - "traefik.http.routers.backend.rule=PathPrefix(`/api`)"  
   frontend:
     image: ghcr.io/eutampieri/ldap-proxy/frontend # docker image build -t ldap-proxy-backend .
     restart: always
@@ -39,7 +41,8 @@ services:
       - mongodb1
     deploy:
       replicas: 2
-  
+    labels:
+     - "traefik.http.services.frontend.loadbalancer.server.port=80"  
   merger:
     image: ghcr.io/eutampieri/ldap-proxy/merger # docker image build -t ldap-proxy-backend .
     restart: always
