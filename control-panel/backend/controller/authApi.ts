@@ -9,8 +9,8 @@ import { JWT } from "@ldap-proxy-config/models/src/index.js";
 
 const ONE_DAY = 24 * 60 * 60;
 
-async function lookupUsername(username: string): Promise<User | null> {
-    const result = (await UserDB.findOne({ username }).exec() as User | undefined | null);
+async function lookupUsername(user: string): Promise<User | null> {
+    const result = (await UserDB.findOne({ user }).exec() as User | undefined | null);
     if (result) {
         return result;
     } else {
