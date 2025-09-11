@@ -19,6 +19,7 @@ RUN npm ci
 
 WORKDIR /app/control-panel/models
 RUN ../node_modules/typescript/bin/tsc
+RUN ls src/generated
 WORKDIR /app/control-panel/backend
 RUN ../node_modules/typescript/bin/tsc
 
