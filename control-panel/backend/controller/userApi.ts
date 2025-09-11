@@ -58,7 +58,7 @@ export default class API {
 
             await DB.findOneAndDelete({ _id: id });
 
-            res.status(200).json({ message: 'User deleted successfully and removed from all courses' });
+            res.status(200).json({ message: 'User deleted successfully' });
 
         } catch (error) {
             res.status(500).json({ message: (error as Error).message });

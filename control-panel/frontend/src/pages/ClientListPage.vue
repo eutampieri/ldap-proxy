@@ -23,6 +23,7 @@ const data = computed<ListData>((): ListData => {
         data: clients.value.map(x => {
             return {
                 dn: x.dn,
+                _id: x._id as string
             }
         }),
         headers: [

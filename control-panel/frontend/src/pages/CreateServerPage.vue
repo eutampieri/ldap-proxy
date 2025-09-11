@@ -67,9 +67,10 @@ async function handleUpdateServer() {
             throw new Error();
         }
     } catch (error) {
+        console.error(error);
         notification.fire({
             title: 'Error',
-            body: 'Error while updating the admin',
+            body: 'Error while updating the server',
             background: 'danger',
             when: new Date(),
         });
@@ -84,7 +85,7 @@ async function handleCreateServer() {
         if (response) {
             notification.fire({
                 title: 'Success',
-                body: `Server ${ip} successfully created!`,
+                body: `Server ${ip.value} successfully created!`,
                 background: 'success',
                 when: new Date(),
             });
@@ -117,7 +118,7 @@ async function handleCreateServer() {
                     Bind DN
                 </GenericInput>
 
-                <GenericInput type="password" id="password" v-model="password" v-model:valid="passwordValid">
+                <GenericInput type="password" id="password" v-model="password">
                     Bind password
                 </GenericInput>
 

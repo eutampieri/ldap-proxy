@@ -2,6 +2,7 @@
 import BackButton from '@/components/BackButton.vue';
 import PageTitle from '@/components/PageTitle.vue';
 import UserProfile from './UserProfile.vue';
+import { useRoute } from 'vue-router';
 </script>
 
 <template>

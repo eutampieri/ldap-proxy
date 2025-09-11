@@ -64,7 +64,7 @@ export class Client {
 
     public get userDetails(): undefined | User {
         if (this.jwt !== undefined) {
-            return jwtDecode<UserJwt>(this.jwt!).profile;
+            return jwtDecode<UserJwt>(this.jwt!) as unknown as User;
         } else {
             return undefined;
         }
@@ -74,7 +74,7 @@ export class Client {
         return this.apiRequest("POST", "/servers/", server).then(r => r.status == 201);
     }
     public updateServer(id: string, server: Server): Promise<boolean> {
-        return this.apiRequest("PUT", "/servers/", { _id: id, ...server }).then(r => r.status == 201);
+        return this.apiRequest("PUT", "/servers/", { _id: id, ...server }).then(r => r.status == 200);
     }
     public listServers(): Promise<Server[]> {
         return this.apiRequest("GET", "/servers/").then(r => r.json());
@@ -90,7 +90,7 @@ export class Client {
         return this.apiRequest("POST", "/clients/", client).then(r => r.status == 201);
     }
     public updateClient(id: string, server: LDAPClient): Promise<boolean> {
-        return this.apiRequest("PUT", "/clients/", { _id: id, ...server }).then(r => r.status == 201);
+        return this.apiRequest("PUT", "/clients/", { _id: id, ...server }).then(r => r.status == 200);
     }
     public listClients(): Promise<LDAPClient[]> {
         return this.apiRequest("GET", "/clients/").then(r => r.json());

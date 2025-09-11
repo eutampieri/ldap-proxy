@@ -27,6 +27,7 @@ const data = computed<ListData>((): ListData => {
                 port: x.port.toString(),
                 baseDN: x.base_dn,
                 tls: x.tls ? "Yes" : "No",
+                _id: x._id as string
             }
         }),
         headers: [

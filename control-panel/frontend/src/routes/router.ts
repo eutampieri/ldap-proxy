@@ -8,6 +8,7 @@ import CreateClientPage from '@/pages/CreateClientPage.vue';
 import ClientListPage from '@/pages/ClientListPage.vue';
 import CreateAdminPage from '@/pages/CreateAdminPage.vue';
 import AdminListPage from '@/pages/AdminListPage.vue';
+import ProfilePage from '@/pages/ProfilePage.vue';
 
 
 const routes = [
@@ -22,6 +23,7 @@ const routes = [
     { path: '/admins/new', name: "createAdmin", component: CreateAdminPage },
     { path: '/admins/:id', name: "updateAdmin", component: CreateAdminPage, props: true },
     { path: '/admins/', name: "listAdmins", component: AdminListPage },
+    { path: '/profile', name: "getProfile", component: ProfilePage },
 ];
 
 const router = createRouter({

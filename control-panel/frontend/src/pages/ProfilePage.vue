@@ -26,6 +26,7 @@ const fieldNameMapper = {
 }
 // prepare the display data
 getUser().then((x: undefined | User) => {
+    console.log(x);
     if (x) {
         user.value = x;
         profileData.value = Object.keys(x)
