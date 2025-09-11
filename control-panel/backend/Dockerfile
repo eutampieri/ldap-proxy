@@ -19,6 +19,7 @@ RUN npm install
 
 WORKDIR /app/models
 RUN ../node_modules/typescript/bin/tsc 
+RUN ls src/generated
 WORKDIR /app/backend
 RUN ../node_modules/typescript/bin/tsc 
 
