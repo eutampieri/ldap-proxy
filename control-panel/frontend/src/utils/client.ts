@@ -10,7 +10,7 @@ interface UserJwt extends JwtPayload {
 }
 
 export class Client {
-    private token_storage_name: string = 'gym-token';
+    private token_storage_name: string = 'ldap-proxy-token';
     private jwt?: string = localStorage.getItem(this.token_storage_name) || undefined;
 
 

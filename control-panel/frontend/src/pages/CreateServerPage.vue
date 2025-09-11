@@ -17,17 +17,6 @@ const ip = ref("");
 const port = ref("");
 const tls = ref(false);
 
-const usernameValid = ref(false);
-const passwordValid = ref(false);
-const firstNameValid = ref(false);
-const lastNameValid = ref(false);
-
-const submitButtonEnabled = computed(() => usernameValid.value &&
-    passwordValid.value &&
-    firstNameValid.value &&
-    lastNameValid.value
-);
-
 const client = useUserStore().client;
 const notification = useNotificationsStore();
 
@@ -143,10 +132,10 @@ async function handleCreateServer() {
                     TLS
                 </CheckBox>
 
-                <button v-if="props.id" class="btn btn-primary" type="button" @click="handleUpdateServer"
-                    :disabled="!submitButtonEnabled">Update Server {{ ip }}</button>
-                <button v-else class="btn btn-primary" type="button" @click="handleCreateServer"
-                    :disabled="!submitButtonEnabled">Create Server {{ ip }}</button>
+                <button v-if="props.id" class="btn btn-primary" type="button" @click="handleUpdateServer">Update Server
+                    {{ ip }}</button>
+                <button v-else class="btn btn-primary" type="button" @click="handleCreateServer">Create Server {{ ip
+                    }}</button>
             </form>
         </SectionContainerItem>
     </SectionContainer>
