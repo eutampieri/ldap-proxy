@@ -1,5 +1,5 @@
 from pymongo import MongoClient
-from entries import *
+from proxy.entries import *
 
 DB_NAME = "ldap-proxy-database"
 

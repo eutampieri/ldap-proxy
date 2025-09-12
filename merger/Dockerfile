@@ -1,4 +1,4 @@
-FROM python:3.11-bookworm
+FROM python:3.11-alpine
 RUN mkdir /app
 WORKDIR /app
 COPY merger/src/requirements.txt /app
