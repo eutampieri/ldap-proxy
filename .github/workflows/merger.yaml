@@ -8,5 +8,6 @@ jobs:
     container:
       image: python:3.11-alpine
     steps:
+      - uses: actions/checkout@v3
       - name: Run tests
         run: cd merger/src && python3 merger_tests.py
