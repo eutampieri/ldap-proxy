@@ -1,0 +1,12 @@
+name: Merger tests
+on:
+  push:
+    branches: [master]
+jobs:
+  container-test-job:
+    runs-on: ubuntu-latest
+    container:
+      image: python:3.11-alpine
+    steps:
+      - name: Run tests
+        run: cd merger/src && python3 merger_tests.py
