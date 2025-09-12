@@ -10,4 +10,4 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - name: Run tests
-        run: cd merger/src && python3 merger_tests.py
+        run: cd merger/src && pip3 install -r requirements.txt && python3 merger_tests.py
