@@ -1,0 +1,161 @@
+\documentclass{scrartcl}
+\usepackage{style}
+\usepackage{svg}
+\usepackage{biblatex}
+\addbibresource{references.bib}
+%\usepackage{tgpagella}
+%\usepackage[T1]{fontenc}
+
+% version
+\newcommand{\versionmajor}{1}
+\newcommand{\versionminor}{0}
+\newcommand{\versionpatch}{0}
+\newcommand{\version}{\versionmajor.\versionminor.\versionpatch}
+
+\title{\LARGE
+    LDAP subtree merging proxy deamon
+}
+
+\subtitle{(v. \version)}
+
+\author{
+    Michele Ravaioli \\ \emailaddr{michele.ravaioli3@studio.unibo.it}
+    \and 
+    Eugenio Tampieri \\ \emailaddr{eugenio.tampieri@studio.unibo.it} 
+}
+
+\date{\today}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+    \par This project presents the design and implementation of an LDAP\footnote{Lightweight Directory Access Protocol, RFC4511} proxying service deployed within a containerized environment. The service accepts incoming LDAP requests and forwards them to one or more target servers, aggregating all the responses of the single servers into one.
+    \par Its primary use case is the consolidation of multiple Active Directory domains, allowing authentication queries to be executed from a single entry point while transparently returning results as if all users resided within the same domain. While remaining online, the service can be configured through a control panel web app accessible to the administrators, which will be able to add and remove servers and clients.
+\end{abstract}
+
+\section{Analysis}
+
+\label{sec:requirements}
+
+%The goal of the project is to develop and deploy a proxying service for Active Directory servers, that should forward and redirect the incoming LDAP requests to the right servers registered in the system. The service should be able to forward the incoming LDAP requests to the right servers. If there are multiple possible targets for a request, then the proxy should forward the request to all the servers and aggregate their response into one (proxy merger). On top of that, the service should be modifiable while remaining online and continuing to expose the service.
+
+\par The goal of this project is to design and deploy a proxying service for LDAP servers capable of handling requests efficiently. It should be able to achieve its goal while remaining always available, even when its configuration is changed while online.
+
+\subsection{Functional requirements}
+
+\par The service should be able to:
+
+\begin{enumerate}
+    \item \textbf{Request Forwarding}: Route incoming LDAP requests to the appropriate servers registered within the system. In order to use the service, the requester must be registered in the system.
+    \item \textbf{Multi-Target Handling}: In cases where multiple servers are valid targets for a request, forward the request to all relevant servers and aggregate their responses into a single unified result (proxy merger).
+    \item \textbf{Consistency}: If even a single server of the ones it should forward a request is unavailable, then the whole request should fail.
+\end{enumerate}
+
+\subsection{Non-functional requirements}
+
+\par The system should fulfill the following requirements:
+
+\begin{enumerate}
+    \item \textbf{Runtime Configurability}: Allow servers, clients, and settings to be updated without downtime or interruption/restart of the service. The service configuration can only be changed by an administrator of the system.
+    \item \textbf{Containerization}: The service should be deployed as a container.
+\end{enumerate}
+
+\subsection{Usage scenarios}
+
+\begin{figure}[h]
+    \centering
+    \includesvg[scale=0.75,pretex=\tiny\sffamily,apptex=\rmfamily]{usecase.drawio.svg}
+    \caption{Use case diagram of the LDAP proxy service}
+    \label{fig:usecase} 
+\end{figure}
+
+
+\section{Design}
+\label{sec:design}
+
+\par Given the functional and non-functional requirements, we opted to provide a cloud-native service composed of three main components: the \textbf{LDAP merger}, the \textbf{database} and the \textbf{control panel}. The proxy merger is in charge of redirecting all incoming LDAP requests based on the settings stored in the database. The database information can be updated by the control panel, which allows administrators to modify the list of servers and clients.
+\begin{figure}[h]
+    \centering
+    \includesvg[scale=0.75,pretex=\tiny\sffamily,apptex=\rmfamily]{auth.drawio.svg}
+    \caption{Sequence diagram of a successful authentication with only one merged server}
+    \label{fig:auth} 
+\end{figure}
+\par To handle the authentication (Fig. \ref{fig:auth}), we will assume that the system is configured with a username
+and password for each merged server. The system will then authenticate the clients against a list of credentials configured
+by an administrator and, if the authentication succeeds, it will send a bind request to each backend using the credentials
+obtained from the database.
+\par Through the control panel, an existing (and privileged) administrator can create other administrators, choosing whether
+they have the privileges to add other administrators or not.
+
+\subsection{Architecture}
+
+\par We opted for a microservices architecture, where each service can be scaled independently to match the load.
+\par We have divided the system into three main services (Fig. \ref{fig:arch}):
+\begin{description}
+    \item[LDAP Merger] This component manages all incoming LDAP requests, forwards them to the right servers, and then sends the aggregated replies back to the correct client.
+    \item[Database] This component stores LDAP servers, clients and administrative users.
+    \item[Control panel] This component allows the system to be configured via a web interface.
+\end{description}
+
+\begin{figure} % DO NOT write any positional hint (e.g. [h] or [t] here!
+    \centering
+    \includesvg[width=\linewidth,pretex=\tiny\sffamily,apptex=\rmfamily]{arch.drawio.svg}
+    \caption{Architectural diagram}
+    \label{fig:arch} 
+\end{figure}
+
+\section{Implementation}
+
+\subsection{Database}
+\par We opted to use MongoDB because of its high availability and replication features.
+\par The schema is made up of three collections:
+\begin{enumerate}
+    \item \texttt{Client}: this collection stores all
+\end{enumerate}
+
+\subsection{Control panel}
+
+\par This component is structured as a \textit{Vue.js} Single Page Application that communicates with an \textit{express} backend, which in turn reads and modifies data from the database. The authentication is handled through JSON Web Tokens (JWTs).
+\subsubsection{Backend}
+\par The backend provides a set of JWT authenticated REST APIs that allow Create, Retrieve, Update and Delete access to the three domain entities.
+\par We opted to implement the backend using Typescript for the enhanced type checking and to share types between the frontend and the backend.
+\subsubsection{Frontend}
+\par The frontend is a set of simple views optimised for both desktop and mobile that use Bootstrap components.
+
+\subsection{LDAP Merger}
+
+\par The proxy merger component was implemented in Python using the \textit{ldaptor} library \cite{ldaptor}, which provides a lightweight and reliable framework for building LDAP servers. \textit{Ldaptor} enables the creation of LDAP mergers that establish multiple connections in parallel, automatically aggregate responses, and offer high configurability.
+\par The merger is designed as a read-only service: it supports only \texttt{bind} and \texttt{search} requests, while rejecting all write or modification operations. A request is processed only if the client is registered in the database. Once validated, the merger forwards the request to all relevant servers (also stored in the database) and aggregates their responses (Fig. \ref{fig:auth}). If any server returns an error (e.g., due to unavailability or lack of authorisation), the entire procedure fails, and the client receives an error response.
+\par Thanks to the underlying reactor pattern provided by \textit{ldaptor}, the system achieves high responsiveness and supports multiple concurrent LDAP merger instances. This design allows the service to scale dynamically with the incoming request load.
+
+\section{Validation}
+
+\par To ensure both the performance and the accuracy of the system, automated testing was implemented for the \textbf{LDAP Merger} and \textbf{Control Panel} services. In addition, the system is continuously validated through integration workflows on GitHub.
+\par The \textbf{LDAP Merger} service was tested using \textit{Twisted Trial}, which enables the creation of a custom testing infrastructure. This was necessary because \textit{ldaptor} does not provide a dedicated testing framework. To verify the correct behavior of the merger, mock components were developed for servers, clients, and the database, allowing controlled and reproducible test scenarios.
+\par To ensure that all microservices have the same definition of the data,
+we used JSON Schema (RFCxxxx) to define the main entities. Those are used to generate the MongoDB schema and the Typescript
+definition files. The schema is also used to validate the JSON serialised Python classes in CI.
+
+\section{Deployment}
+
+\par Each component of the system is containerised separately, with its own Docker image. Services can be deployed independently using platforms such as \textit{Docker} or \textit{Kubernetes}, which also support automatic scaling of pods to handle varying request loads. Both the LDAP Merger and the Control Panel are stateless services, making them straightforward to scale horizontally without additional concerns. The Database, however, requires special attention due to its stateful nature, which complicates scaling. This challenge is addressed by MongoDB through the use of ReplicaSets, which distribute database replicas across multiple instances while preserving consistency and reliability of the system. In order to have a simpler database configuration, we decided to make the number of replicas fixed.
+
+\subsection{How to deploy}
+
+\par The system can be deployed using Docker Swarm or kubernetes.
+\par The repo contains a \texttt{docker-compose.yaml} file and the ..... in the \texttt{k8s} directory.
+
+\section{Conclusions}
+
+\par In this project we designed, implemented, and validated an LDAP proxying service aimed at consolidating multiple Active Directory domains under a single access point. The system successfully forwards and aggregates LDAP requests, ensuring transparent authentication across domains while remaining configurable at runtime through a dedicated control panel.
+\par By adopting a microservices architecture and containerized deployment, the solution achieves scalability, availability, and ease of integration with cloud-native platforms. Stateless services such as the LDAP Merger and the Control Panel can be scaled without complications, while database consistency is ensured through MongoDB ReplicaSets.
+\par Validation through automated tests and continuous integration confirmed the correctness and reliability of the core components. Overall, the project demonstrates a flexible and fault-tolerant approach to LDAP proxying, capable of supporting complex multi-domain environments in a transparent and maintainable way.
+
+\nocite{*} % Includes all references from the `references.bib` file
+% \bibliographystyle{plain}
+% \bibliography{references}
+
+\printbibliography
+\end{document}
