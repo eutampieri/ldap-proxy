@@ -1,6 +1,6 @@
 \documentclass{scrartcl}
 \usepackage{style}
-\usepackage{svg}
+\usepackage[inkscapeversion=1]{svg}
 \usepackage{biblatex}
 \addbibresource{references.bib}
 %\usepackage{tgpagella}
@@ -71,11 +71,25 @@
     \label{fig:usecase} 
 \end{figure}
 
-
 \section{Design}
 \label{sec:design}
 
 \par Given the functional and non-functional requirements, we opted to provide a cloud-native service composed of three main components: the \textbf{LDAP merger}, the \textbf{database} and the \textbf{control panel}. The proxy merger is in charge of redirecting all incoming LDAP requests based on the settings stored in the database. The database information can be updated by the control panel, which allows administrators to modify the list of servers and clients.
+%\subsection{Failure modes}
+\par The system can encounter these failures:
+\begin{enumerate}
+	\item LDAP servers are unreachable or their connection times out
+	\item The merger cannot reach the database
+	\item The control panel cannot reach the database
+	\item The control panel backend is unreachable
+	\item The control panel frontend is unreachable
+\end{enumerate}
+
+\par The first two failures are the most severe, because they can impair the core function of the system, while the last three only impair the ability to update the configuration at runtime.
+\par In particular, when an LDAP server is unreachable it could be because of a network partition or because the server is not available. For what concerns this system, the two failures can be considered a single one and we will have to choose wether to sacrifice \textit{consistency} (and return data from the available servers) or to sacrifice \textit{availability} (and to return an error, even though a partial response could be constructed).
+\par Lastly, the second failure is critical and poses no choice other than sacrificing \textit{availability}, because the system will not know which servers to contact.
+
+\par The merger will return a failure when at least one server is unreachable or if the database is unreachable to ensure \textit{consistency}.
 \begin{figure}[h]
     \centering
     \includesvg[scale=0.75,pretex=\tiny\sffamily,apptex=\rmfamily]{auth.drawio.svg}
@@ -99,7 +113,7 @@ they have the privileges to add other administrators or not.
     \item[Control panel] This component allows the system to be configured via a web interface.
 \end{description}
 
-\begin{figure} % DO NOT write any positional hint (e.g. [h] or [t] here!
+\begin{figure}
     \centering
     \includesvg[width=\linewidth,pretex=\tiny\sffamily,apptex=\rmfamily]{arch.drawio.svg}
     \caption{Architectural diagram}
@@ -112,8 +126,11 @@ they have the privileges to add other administrators or not.
 \par We opted to use MongoDB because of its high availability and replication features.
 \par The schema is made up of three collections:
 \begin{enumerate}
-    \item \texttt{Client}: this collection stores all
+    \item \texttt{Client}: this collection stores the bind DN and the hashed password for each client.
+    \item \texttt{Server}: this collection stores the servers' bind DN, password, base DN and connection informations.
+    \item \texttt{User}: this collection stores the username, the password and the privileges of each administrator.
 \end{enumerate}
+\par The schema is generated from a JSONSchema file to keep it consistent with the rest of the system.
 
 \subsection{Control panel}
 
@@ -122,11 +139,11 @@ they have the privileges to add other administrators or not.
 \par The backend provides a set of JWT authenticated REST APIs that allow Create, Retrieve, Update and Delete access to the three domain entities.
 \par We opted to implement the backend using Typescript for the enhanced type checking and to share types between the frontend and the backend.
 \subsubsection{Frontend}
-\par The frontend is a set of simple views optimised for both desktop and mobile that use Bootstrap components.
+\par The frontend is a set of simple views optimised for both desktop and mobile that use Bootstrap components and allow to create and modify clients, servers. Privileged administrators can also create and modify administrators.
 
 \subsection{LDAP Merger}
 
-\par The proxy merger component was implemented in Python using the \textit{ldaptor} library \cite{ldaptor}, which provides a lightweight and reliable framework for building LDAP servers. \textit{Ldaptor} enables the creation of LDAP mergers that establish multiple connections in parallel, automatically aggregate responses, and offer high configurability.
+\par The proxy merger component was implemented in Python using the \texttt{ldaptor} library \cite{ldaptor}, which provides a lightweight and reliable framework for building LDAP servers. \texttt{ldaptor} enables the creation of LDAP mergers that establish multiple connections in parallel, automatically aggregate responses, and offer high configurability.
 \par The merger is designed as a read-only service: it supports only \texttt{bind} and \texttt{search} requests, while rejecting all write or modification operations. A request is processed only if the client is registered in the database. Once validated, the merger forwards the request to all relevant servers (also stored in the database) and aggregates their responses (Fig. \ref{fig:auth}). If any server returns an error (e.g., due to unavailability or lack of authorisation), the entire procedure fails, and the client receives an error response.
 \par Thanks to the underlying reactor pattern provided by \textit{ldaptor}, the system achieves high responsiveness and supports multiple concurrent LDAP merger instances. This design allows the service to scale dynamically with the incoming request load.
 
