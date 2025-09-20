@@ -1,3 +1,5 @@
+import argon2
+
 from pymongo import MongoClient
 from proxy.entries import *
 
@@ -21,8 +23,9 @@ class ProxyDatabase():
 
     # authenticate a client and return it. Return None if not authorized
     def get_authenticated_client(self, client_dn, client_auth) -> ClientEntry | None:
+        ph = argon2.PasswordHasher()
         clients = self.get_clients()
         for u in clients:
-            if u.dn == client_dn and u.password == client_auth:
+            if u.dn == client_dn and ph.verify(u.password, client_auth):
                 return u
         return None
