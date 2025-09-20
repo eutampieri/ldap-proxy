@@ -9,21 +9,9 @@ class ProxyDatabase():
         self.client = MongoClient(address, port)
         self.db = self.client[DB_NAME]
         
-    def put_server(self, server: ServerEntry) -> None:
-        self.db["servers"].insert_one(server.to_object())
-
     def get_servers(self) -> list[ServerEntry]:
         return [ServerEntry(ip=i["ip"], base_dn=i["base_dn"], bind_dn=i["bind_dn"], bind_password=i["bind_password"],
                                port=i["port"], tls=i["tls"]) for i in self.db["servers"].find()]
-    
-    def put_user(self, user: UserEntry) -> None:
-        self.db["users"].insert_one(user.to_object())
-
-    def get_admins(self) -> list[UserEntry]:
-        return [UserEntry(i["user"], i["password"], True) for i in self.db["users"].find({"is_admin": True})]
-    
-    def get_users(self) -> list[UserEntry]:
-        return [UserEntry(i["user"], i["password"], i["is_admin"]) for i in self.db["users"].find()]
     
     def put_client(self, client: ClientEntry) -> None:
         self.db["clients"].insert_one(client.to_object())
