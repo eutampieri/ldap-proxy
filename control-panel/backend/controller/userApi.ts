@@ -2,10 +2,14 @@ import { Request, Response } from 'express';
 import { default as DB } from '../models/userModel.js';
 import { User } from '@ldap-proxy-config/models/src/generated/user.js';
 import { Error } from 'mongoose';
+import { hash } from '@node-rs/argon2';
 
 export default class API {
     static async createUser(req: Request<{}, {}, User>, res: Response) {
-        const user = req.body;
+        const user = {
+            ...req.body,
+            password: await hash(req.body.password),
+        };
         try {
             const userAlreadyPresent = await DB.findOne({ username: user.user }).exec();
             if (!userAlreadyPresent) {
@@ -35,10 +39,12 @@ export default class API {
         const id = req.body._id;
         const user: User = {
             user: req.body.user,
-            password: req.body.password,
             is_admin: req.body.is_admin,
+            password: req.body.password
         };
-
+        if (req.body.password !== undefined) {
+            user.password = await hash(req.body.password);
+        }
         try {
             await DB.updateOne({ _id: id }, user, null);
             res.status(200).json({ message: 'User updated successfully' });

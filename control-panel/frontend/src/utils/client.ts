@@ -106,8 +106,8 @@ export class Client {
     public createUser(user: User): Promise<boolean> {
         return this.apiRequest("POST", "/users/", user).then(r => r.status == 201);
     }
-    public updateUser(id: string, server: User): Promise<boolean> {
-        return this.apiRequest("PUT", "/users/", { _id: id, ...server }).then(r => r.status == 201);
+    public updateUser(id: string, user: User): Promise<boolean> {
+        return this.apiRequest("PUT", "/users/", { _id: id, ...user }).then(r => r.status == 201);
     }
     public listUsers(): Promise<User[]> {
         return this.apiRequest("GET", "/users/").then(r => r.json());
