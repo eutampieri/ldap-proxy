@@ -1,0 +1,115 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    service: backend
+  name: backend
+  namespace: ldap-proxy
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      service: backend
+  strategy:
+    rollingUpdate:
+      maxSurge: 2
+      maxUnavailable: 1
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        service: backend
+    spec:
+      containers:
+        - image: ghcr.io/eutampieri/ldap-proxy/backend:latest
+          name: backend
+          resources:
+            limits:
+              cpu: 2
+              memory: 1Gi
+            requests:
+              cpu: 128m
+              memory: 128Mi
+          ports:
+            - containerPort: 3000
+          env:
+            - name: MONGODB_URI
+              value: mongodb://mongodb-0.mongodb:27017,mongodb-1.mongodb:27017,mongodb-2.mongodb:27017/ldap-proxy-database?replicaSet=rs0
+      restartPolicy: Always
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    service: frontend
+  name: frontend
+  namespace: ldap-proxy
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      service: frontend
+  strategy:
+    rollingUpdate:
+      maxSurge: 2
+      maxUnavailable: 1
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        service: frontend
+    spec:
+      containers:
+        - image: ghcr.io/eutampieri/ldap-proxy/frontend:latest
+          name: frontend
+          resources:
+            limits:
+              cpu: 1000m
+              memory: 256Mi
+            requests:
+              cpu: 128m
+              memory: 128Mi
+          ports:
+            - containerPort: 80
+      restartPolicy: Always
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    service: merger
+  name: merger
+  namespace: ldap-proxy
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      service: merger
+  strategy:
+    rollingUpdate:
+      maxSurge: 2
+      maxUnavailable: 1
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        service: merger
+    spec:
+      containers:
+        - image: ghcr.io/eutampieri/ldap-proxy/merger:latest
+          name: merger
+          resources:
+            limits:
+              cpu: 1000m
+              memory: 256Mi
+            requests:
+              cpu: 128m
+              memory: 128Mi
+          ports:
+            - containerPort: 389
+          env:
+            - name: DB_URI
+              value: mongodb://mongodb-0.mongodb:27017,mongodb-1.mongodb:27017,mongodb-2.mongodb:27017/?replicaSet=rs0
+            - name: PROXY_PORT
+              value: "389"
+      restartPolicy: Always

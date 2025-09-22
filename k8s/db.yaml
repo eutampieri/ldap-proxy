@@ -1,0 +1,58 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  labels:
+    service: mongodb
+  name: mongodb
+  namespace: ldap-proxy
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      service: mongodb
+  template:
+    metadata:
+      labels:
+        service: mongodb
+    spec:
+      containers:
+        - image: mongo:8.0.4
+          name: mongodb
+          ports:
+            - containerPort: 27017
+          volumeMounts:
+            - name: mongo-pv
+              mountPath: /data/db
+          command:
+            - mongod
+            - --replSet
+            - rs0
+            - --bind_ip_all
+            - --port
+            - "27017"
+  volumeClaimTemplates:
+    - metadata:
+        name: mongo-pv
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        storageClassName: longhorn
+        resources:
+          requests:
+            storage: 1Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    service: mongodb
+  name: mongodb
+  namespace: ldap-proxy
+spec:
+  clusterIP: None
+  ports:
+    - name: "mongodb"
+      port: 27017
+      targetPort: 27017
+      protocol: TCP
+  selector:
+    service: mongodb
