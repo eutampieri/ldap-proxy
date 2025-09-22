@@ -30,6 +30,28 @@ Its primary use case is the consolidation of multiple Active Directory domains, 
 The system can be deployed using **Docker Swarm** or **Kubernetes**.  
 This repository provides a `docker-compose.yaml` file and deployment manifests under the `k8s/` directory.  
 
+### Configuration
+
+Configuration is done by means of environment variables and through the web interface.
+Here is a list of configurable environment variables.
+
+#### Merger
+
+- `PROXY_PORT`: The port that the merger listens on
+- `DB_URI`: The database connection string
+
+#### Control panel
+
+The control panel starts with a preconfigured (and modifiable) user with username "admin" and password "admin".
+
+The variable it reads are:
+
+- `MONGODB_URI`: The MongoDB connection string
+- `PORT`: The API port
+- `JWT_ISSUER`: The JWT `iss` field
+- `JWT_AUDIENCE`: The JWT `aud` field
+- `JWT_KEY`: The JWT signing key
+
 ### Docker
 
 1. If not already done, initialize Swarm:  
