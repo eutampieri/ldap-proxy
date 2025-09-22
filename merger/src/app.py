@@ -8,14 +8,11 @@ import os
 
 if __name__ == '__main__':
     # set port
-    if len(sys.argv) > 1:
-        PROXY_PORT = int(sys.argv[1])
-    else:
-        PROXY_PORT = 10636
+    PROXY_PORT = os.getenv("PROXY_PORT", 10636)
 
     # create the database
-    connection_uri = os.getenv("DB_URI", "mongodb://127.0.0.1:27017")
-    db = ProxyDatabase(connection_uri)
+    CONNECTION_URI = os.getenv("DB_URI", "mongodb://127.0.0.1:27017")
+    db = ProxyDatabase(CONNECTION_URI)
     # configs = [
     #     ServerEntry(ip="192.168.1.2", port=389, bind_dn="", bind_password="dc", base_dn=""),
     #     ServerEntry(ip="192.168.1.189", port=389, bind_dn="", bind_password="dc-temp", base_dn="")
