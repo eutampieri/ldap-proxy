@@ -1,0 +1,25 @@
+merger_tests:
+  stage: test
+  image: python:3.11-alpine
+  script:
+    - cd merger/src
+    - pip3 install -r requirements.txt
+    - python3 merger_tests.py
+
+prepare_schema_test:
+  stage: test
+  image: python3:3.11-alpine
+  script:
+    - python3 tests/schemas/test_python.py
+  artifacts:
+    paths:
+      - tests/schemas/*.json
+schema_tests:
+  needs:
+    - prepare_schema_test
+  stage: test
+  image: ghcr.io/sourcemeta/jsonschema:v11.8.3
+  script:
+    - for f in schemas/*;
+      do jsonschema validate $$f tests/schemas/`basename $$f .json`_python.json --trace;
+      done
