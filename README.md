@@ -1,5 +1,9 @@
 # LDAP Proxying Service
 
+_Michele Ravaioli - michele.ravaioli3@studio.unibo.it_
+    
+_Eugenio Tampieri - eugenio.tampieri@studio.unibo.it_
+
 ## Overview
 
 This project presents the design and implementation of a _Lightweight Directory Access Protocol_ (LDAP) proxying service deployed within a containerized environment. The service accepts incoming LDAP requests and forwards them to one or more target servers, aggregating all the responses into a single result.
