@@ -7,8 +7,8 @@ DB_NAME = "ldap-proxy-database"
 
 # DB utility class
 class ProxyDatabase():
-    def __init__(self, address, port):
-        self.client = MongoClient(address, port)
+    def __init__(self, connection_uri: str):
+        self.client = MongoClient(connection_uri)
         self.db = self.client[DB_NAME]
         
     def get_servers(self) -> list[ServerEntry]:

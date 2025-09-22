@@ -4,6 +4,7 @@ from twisted.python import log
 from proxy.merger import ProxyMerger
 from proxy.proxydatabase import ProxyDatabase
 import sys
+import os
 
 if __name__ == '__main__':
     # set port
@@ -13,7 +14,8 @@ if __name__ == '__main__':
         PROXY_PORT = 10636
 
     # create the database
-    db = ProxyDatabase("127.0.0.1", 27017)
+    connection_uri = os.getenv("DB_URI", "mongodb://127.0.0.1:27017")
+    db = ProxyDatabase(connection_uri)
     # configs = [
     #     ServerEntry(ip="192.168.1.2", port=389, bind_dn="", bind_password="dc", base_dn=""),
     #     ServerEntry(ip="192.168.1.189", port=389, bind_dn="", bind_password="dc-temp", base_dn="")
