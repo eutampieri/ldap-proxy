@@ -8,7 +8,7 @@ import os
 
 if __name__ == '__main__':
     # set port
-    PROXY_PORT = os.getenv("PROXY_PORT", 10636)
+    PROXY_PORT = int(os.getenv("PROXY_PORT", 10636))
 
     # create the database
     CONNECTION_URI = os.getenv("DB_URI", "mongodb://127.0.0.1:27017")
