@@ -8,7 +8,7 @@ merger_tests:
 
 prepare_schema_test:
   stage: test
-  image: python3:3.11-alpine
+  image: python:3.11-alpine
   script:
     - python3 tests/schemas/test_python.py
   artifacts:
