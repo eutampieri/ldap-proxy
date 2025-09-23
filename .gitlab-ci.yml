@@ -6,24 +6,12 @@ merger_tests:
     - pip3 install -r requirements.txt
     - python3 merger_tests.py
 
-prepare_schema_test:
-  stage: test
-  image: python:3.11-alpine
-  script:
-    - python3 tests/schemas/test_python.py
-  artifacts:
-    paths:
-      - tests/schemas/*.json
 schema_tests:
-  needs:
-    - prepare_schema_test
   stage: test
   image: debian:latest
   before_script:
     - apt update
-    - apt install unzip curl -y
+    - apt install unzip curl python3-minimal make -y
     - "curl -fsSL https://raw.githubusercontent.com/sourcemeta/jsonschema/main/install -H 'Cache-Control: no-cache, no-store, must-revalidate' | /bin/sh"
   script:
-    - for f in schemas/*;
-      do jsonschema validate $$f tests/schemas/`basename $$f .json`_python.json --trace;
-      done
+    - make test_schema
