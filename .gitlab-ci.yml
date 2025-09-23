@@ -18,7 +18,9 @@ schema_tests:
   needs:
     - prepare_schema_test
   stage: test
-  image: ghcr.io/sourcemeta/jsonschema:v11.8.3
+  image: debian:latest
+  before_script:
+    - "curl -fsSL https://raw.githubusercontent.com/sourcemeta/jsonschema/main/install -H 'Cache-Control: no-cache, no-store, must-revalidate' | /bin/sh"
   script:
     - for f in schemas/*;
       do jsonschema validate $$f tests/schemas/`basename $$f .json`_python.json --trace;
