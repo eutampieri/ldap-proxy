@@ -20,7 +20,8 @@ schema_tests:
   stage: test
   image: debian:latest
   before_script:
-    - apt update && apt install curl
+    - apt update
+    - apt install curl -y
     - "curl -fsSL https://raw.githubusercontent.com/sourcemeta/jsonschema/main/install -H 'Cache-Control: no-cache, no-store, must-revalidate' | /bin/sh"
   script:
     - for f in schemas/*;
